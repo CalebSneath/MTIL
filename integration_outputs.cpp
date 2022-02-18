@@ -16,7 +16,7 @@
 
 using namespace std;
 
-Integration_Output::setText(string inText)
+void Integration_Output::setText(string inText)
 {
     
 }
