@@ -16,8 +16,8 @@
 // Compilation Instructions:
 // - Open command terminal, navigate to this project directory. 
 // - Run each of the following without parentheses:
-//  - (g++ -c main.cpp integration_inputs.cpp integration_outputs.cpp)
-//  - (g++ main.o integration_inputs.o integration_outputs.o -o "MTIL")
+//  - (g++ -c Source.cpp integration_inputs.cpp integration_outputs.cpp)
+//  - (g++ Source.o integration_inputs.o integration_outputs.o -o "MTIL")
 //  - ("MTIL.exe")
 //  - The game should now play and the executable can be renamed.
 //      
