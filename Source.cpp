@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // 
-// Author:           Caleb Sneath, MD, Parker
+// Author:           Caleb Sneath, MD Abubakkar, Parker
 // Email:            ansengor@yahoo.com
 // Label:            Machine Translation Integration Layer
 // Course:           CMPS 5153
