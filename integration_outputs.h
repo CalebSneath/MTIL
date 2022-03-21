@@ -1,14 +1,15 @@
-///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 // 
 // Author:           Caleb Sneath, Parker, MD
 // Email:            ansengor@yahoo.com
 // Label:            MTIL
 // Course:           CMPS 5153
 // Semester:         Spring 2022
+// Date:             March 15, 2022
 // File Description: This file contains the header information for the 
 //                   translation output class along with all of 
 //                   its  descendents.
-///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 
 
 #pragma once
@@ -19,9 +20,9 @@
 
 #include <string>
 
-///////////////////////////////////////////////////////////////////////////////
-//                             Interfaces
-///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//                             Abstract Classes
+//////////////////////////////////////////////////////////////////////////////
 
 // Interface class for any Integration_Input class
 
@@ -36,33 +37,72 @@ class Integration_Output
 {
     public:
         void setText(std::string inText);
-        void setCoordinates();
+        void setCoordinates
+            (int topLeftX, int topLeftY, int lowRightX, int lowRightY);
         virtual void displayText
             (int topLeftX, int topLeftY, int lowRightX, int lowRightY)=0;
         virtual void displayText();
-    private:
+    protected:
         std::string outputText;
         int upperLeftX;
-        int upperRightY;
-        int bottomLeftX;
+        int upperLeftY;
+        int bottomRightX;
         int bottomRightY;
 };
 
-///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 //                             Child Classes
-///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 
-// Class: Clipboard_Input
-// Purpose: A class to collect input from the clipboard fo an application.
+// Class: Horizontal_Output
+// Purpose: A class to grab the left and right of the display area and
+// stretch it across before displaying text.
 class Horizontal_Output: public Integration_Output
 {
     public:
-        Horizontal_Output();
-
-        void updateText();
-        // Any necessary constructor overloads
-        std::string getText();
-        std::string getTextNoUpdate();
+        void displayText
+            (int topLeftX, int topLeftY, int lowRightX, int lowRightY);
+        void displayText();
     private: 
         // Any internal implementation details
+};
+
+class Vertical_Output : public Integration_Output
+{
+public:
+    void displayText
+    (int topLeftX, int topLeftY, int lowRightX, int lowRightY);
+    void displayText();
+private:
+    // Any internal implementation details
+};
+
+class Transparent_Output : public Integration_Output
+{
+public:
+    void displayText
+    (int topLeftX, int topLeftY, int lowRightX, int lowRightY);
+    void displayText();
+private:
+    // Any internal implementation details
+};
+
+class Image_Output : public Integration_Output
+{
+public:
+    void displayText
+    (int topLeftX, int topLeftY, int lowRightX, int lowRightY);
+    void displayText();
+private:
+    // Any internal implementation details
+};
+
+class Solid_Output : public Integration_Output
+{
+public:
+    void displayText
+    (int topLeftX, int topLeftY, int lowRightX, int lowRightY);
+    void displayText();
+private:
+    // Any internal implementation details
 };
