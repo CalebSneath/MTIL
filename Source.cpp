@@ -4,7 +4,7 @@
 // Email:            ansengor@yahoo.com
 // Label:            Machine Translation Integration Layer
 // Course:           CMPS 5153
-// Semester:         Spring, 2022
+// Semester:         Spring 2022
 //
 // Description: 
 //       This program is designed to make the translations for a windows
