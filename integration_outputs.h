@@ -15,10 +15,9 @@
 #pragma once
 
 #include <string>
-
-#pragma once
-
-#include <string>
+#include <Windows.h>
+#include <d2d1.h>
+#include "user_interface_primitives.h"
 
 //////////////////////////////////////////////////////////////////////////////
 //                             Abstract Classes
@@ -33,21 +32,17 @@
 //          Use getText to grab from an object of this class.
 //          Use getTextNoUpdate to grab text from objects of this class 
 //          without checking for updates from the text source.
-class Integration_Output
+class Integration_Output: public TextBox
 {
     public:
-        void setText(std::string inText);
-        void setCoordinates
-            (int topLeftX, int topLeftY, int lowRightX, int lowRightY);
-        virtual void displayText
-            (int topLeftX, int topLeftY, int lowRightX, int lowRightY)=0;
-        virtual void displayText();
+        Integration_Output();// Mandatory.
+        Integration_Output(HWND inHandle, UINT inMessage, WPARAM inWParam,
+            LPARAM inLongParam);
+        void cycleText(std::string inText,
+            HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget);
     protected:
-        std::string outputText;
-        int upperLeftX;
-        int upperLeftY;
-        int bottomRightX;
-        int bottomRightY;
+        int xOffset = 0;
+        int yOffset = 0;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -60,49 +55,39 @@ class Integration_Output
 class Horizontal_Output: public Integration_Output
 {
     public:
-        void displayText
-            (int topLeftX, int topLeftY, int lowRightX, int lowRightY);
-        void displayText();
-    private: 
-        // Any internal implementation details
+        Horizontal_Output();// Mandatory
+        Horizontal_Output(HWND inHandle, UINT inMessage, WPARAM inWParam,
+            LPARAM inLongParam);
+        void cycleText(std::string inText,
+            HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget);
+
 };
 
 class Vertical_Output : public Integration_Output
 {
-public:
-    void displayText
-    (int topLeftX, int topLeftY, int lowRightX, int lowRightY);
-    void displayText();
-private:
-    // Any internal implementation details
-};
-
-class Transparent_Output : public Integration_Output
-{
-public:
-    void displayText
-    (int topLeftX, int topLeftY, int lowRightX, int lowRightY);
-    void displayText();
-private:
-    // Any internal implementation details
+    public:
+        Vertical_Output();// Mandatory
+        Vertical_Output(HWND inHandle, UINT inMessage, WPARAM inWParam,
+            LPARAM inLongParam);
+        void cycleText(std::string inText,
+            HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget);
 };
 
 class Image_Output : public Integration_Output
 {
-public:
-    void displayText
-    (int topLeftX, int topLeftY, int lowRightX, int lowRightY);
-    void displayText();
-private:
-    // Any internal implementation details
+    public:
+        // The parent constructor is fine to inherit.
+        using Integration_Output::Integration_Output;
+        void cycleText(std::string inText,
+            HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget);
 };
 
 class Solid_Output : public Integration_Output
 {
-public:
-    void displayText
-    (int topLeftX, int topLeftY, int lowRightX, int lowRightY);
-    void displayText();
-private:
-    // Any internal implementation details
+    public:
+        Solid_Output();// Mandatory
+        Solid_Output(HWND inHandle, UINT inMessage, WPARAM inWParam,
+            LPARAM inLongParam);
+        void cycleText(std::string inText,
+            HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget);
 };

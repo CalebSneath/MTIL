@@ -11,57 +11,72 @@
 //                   its  descendents.
 //////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
+#include "integration_inputs.h"
 #include <iostream>
 #include <string>
-#include "integration_inputs.h"
+#include <windows.h>
+#include <fstream>
 
-using namespace std;
-
-//////////////////////////////////////////////////////////////////////////////
-//                             Abstract Classes
-//////////////////////////////////////////////////////////////////////////////
-
-// Integration_Input
-
-std::string Integration_Input::getTextNoUpdate()
-{
-    return inputText;
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 //                             Child Classes
-//////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
+// Clipboard_Input
+void Clipboard_Input::updateText() {
+    OpenClipboard(nullptr);
+    HANDLE hData = GetClipboardData(CF_TEXT);
 
-//Clipboard_Input
+    char* pszText = static_cast<char*>(GlobalLock(hData));
+    std::string text(pszText);
 
-inline void Clipboard_Input::updateText()
-{
-    // TODO: Implementation
+    GlobalUnlock(hData);
+    CloseClipboard();
+
+    newText = text;
 }
-inline std::string Clipboard_Input::getText()
+std::string Clipboard_Input::getText() 
 {
-    // TODO: Implementation
+    inputText = newText;
     return inputText;
 }
 
 // File_Input
-
-File_Input::File_Input()
+File_Input::File_Input() 
 {
-    fileName = "";
+    for (int i = 0; i < 8; i++) {
+        if (files[i] == false) {
+            fileName = names[i];
+            files[i] = true;
+            index = i;
+            break;
+        }
+    }
+    //Commented out don't need to create the file here
+    //createFile.open(fileName);
+    //createFile.close();
 }
-File_Input::File_Input(std::string inFileName)
+void File_Input::updateText() 
 {
-    fileName = inFileName;
+    std::string temp = "";
+    store = "";
+    infile.open(fileName);
+    while (!infile.eof()) {
+        infile >> temp;
+        if (store[0]) {
+            store += " " + temp + " ";
+        }
+        else {
+            store += temp + " ";
+        }
+    }
+    infile.close();
 }
-inline void File_Input::updateText()
-{
-    // TODO: Implementation
-}
-inline std::string File_Input::getText()
-{
-    // TODO: Implementation
+std::string File_Input::getText() {
+    inputText += " " + store;
     return inputText;
 }
+// Static Member Variables
+bool File_Input::files[8] = { false, false, false, false, false, false, false, false };
+std::string File_Input::names[8] = { "MTILFile1", "MTILFile2", "MTILFile3", "MTILFile4", "MTILFile5", "MTILFile6", "MTILFile7", "MTILFile8" };

@@ -6,7 +6,7 @@
 // Course:           CMPS 5153
 // Semester:         Spring 2022
 //
-// Description: 
+// Description:
 //       This program is designed to make the translations for a windows
 //       application appear more seamlessly within its intended application
 //       
@@ -38,6 +38,8 @@
 //      online documentation and tutorial. Source:
 //          https://docs.microsoft.com/en-us/windows/win32/learnwin32
 ///////////////////////////////////////////////////////////////////////////////
+
+#pragma once
 
 // Ensure UNICODE precompiler directive is activated
 #ifdef _UNICODE
@@ -77,7 +79,6 @@
 int main(int flagCount, char* debugFlags[])
 {
     bool debugSession = false;
-    std::cout << "Testing" << std::endl;
     if (flagCount > 1)
     {
         std::string debugCheck = debugFlags[1];
@@ -86,6 +87,12 @@ int main(int flagCount, char* debugFlags[])
             std::cout << "Debug Mode" << std::endl;
             debugSession = true;
         }
+    }
+    else
+    {
+        //Remove the console so only the game shows, reducing clutter
+        HWND noConsole = GetConsoleWindow();
+        //ShowWindow(noConsole, SW_HIDE);
     }
 
     MTILUIProgram MTILInstance;

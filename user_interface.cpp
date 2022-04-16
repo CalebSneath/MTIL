@@ -19,6 +19,8 @@
 //                      learnwin32/learn-to-program-for-windows
 //////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
 // Ensures UNICODE precompiler directive is activated
 #ifdef _UNICODE
 #ifndef UNICODE
@@ -29,10 +31,13 @@
 #define UNICODE
 #endif
 
-#include "user_interface.h"
+
 #include "integration_inputs.h"
 #include "integration_outputs.h"
+#include "user_interface.h"
+#include "user_interface_primitives.h"
 #include <iostream>
+#include <math.h>
 
 // Precompiler directive in case anyone wants to modify relevant
 // code to work for Mac or Linux builds. Commented out for now
@@ -52,123 +57,22 @@
 
 //#include "basewin.h"
 #include <d2d1.h>
+#include <dwmapi.h>
 
-// Sometimes uncommenting one of these fixes user's include issues
-// for direct2D.
+
+// Sometimes uncommenting one of these fixes user's include issues.
+// Use the linker in the command line and comment these out
+// if your compiler doesn't support pragma comment.
 //#pragma comment(lib,"d2d1.lib")
 //#pragma comment(lib, "d2d1")
+#pragma comment(lib, "Dwrite")
+#pragma comment(lib, "Dwmapi")
 
 #include <d2d1helper.h>
 #include <dwrite.h>
 #include <wincodec.h>
 #include <Unknwn.h>
 
-//////////////////////////////////////////////////////////////////////////////
-//                             Parent Classes
-//////////////////////////////////////////////////////////////////////////////
-
-// Circle
-Circle::Circle()
-{
-    // Only exists to be replaced by calling below constructor.
-}
-Circle::Circle(HWND inHandle, UINT inMessage, WPARAM inWidthParam, 
-    LPARAM inLengthParam)
-{
-    hWnd = inHandle;
-    uMsg = inMessage;
-    wParam = inWidthParam;
-    lParam = inLengthParam;
-}
-inline void Circle::setCoords(float inX, float inY, float inRad)
-{
-    centerX = inX;
-    centerY = inY;
-    radius = inRad;
-}
-inline void Circle::setScale(int inWidth, int inHeight)
-{
-    xScale = inWidth;
-    yScale = inHeight;
-}
-inline void Circle::cycleCircle(float rValue, float gValue, float bValue, HRESULT &hr,
-    ID2D1HwndRenderTarget*& pRenderTarget)
-{
-    D2D1_ELLIPSE ellipse;
-
-    static ID2D1SolidColorBrush* pBrush = NULL;
-    hr = S_OK;
-    const D2D1_COLOR_F color = D2D1::ColorF(rValue, gValue, bValue);
-    hr = pRenderTarget->CreateSolidColorBrush(color, &pBrush);
-
-    D2D1_SIZE_F size = pRenderTarget->GetSize();
-    const float x = size.width * centerX;
-    const float y = size.height * centerY;
-    const float adjustedRadius = min(x, y) * radius;
-    ellipse = D2D1::Ellipse(D2D1::Point2F(x, y),
-        adjustedRadius, adjustedRadius);
-
-    if (SUCCEEDED(hr))
-    {
-        pRenderTarget->FillEllipse(ellipse, pBrush);
-    }
-}
-
-
-// Rectangle
-RectangleShape::RectangleShape()
-{
-    // Only exists to be replaced by calling below constructor.
-}
-RectangleShape::RectangleShape(HWND inHandle, UINT inMessage, WPARAM inWidthParam,
-    LPARAM inLengthParam)
-{
-    hWnd = inHandle;
-    uMsg = inMessage;
-    wParam = inWidthParam;
-    lParam = inLengthParam;
-}
-inline void RectangleShape::setCoords(float inTopX, float inTopY, float inBottomX, float inBottomY)
-{
-    topX = inTopX;
-    topY = inTopY;
-    bottomX = inBottomX;
-    bottomY = inBottomY;
-}
-
-// TODO: Maybe a shape class would have been better if this is copied
-//       It's just one function though, probably not worth an extra
-//       parent and changing plans. Discuss later.
-inline void RectangleShape::setScale(int inWidth, int inHeight)
-{
-    xScale = inWidth;
-    yScale = inHeight;
-}
-inline void RectangleShape::cycleRectangle(float rValue, float gValue, float bValue, 
-    HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget)
-{
-    D2D1_RECT_F thisRect;
-
-
-    static ID2D1SolidColorBrush* pBrush = NULL;
-    hr = S_OK;
-    D2D1_SIZE_F size = pRenderTarget->GetSize();
-    const float adjustedTopX = size.width * topX;
-    const float adjustedTopY = size.height * topX;
-    const float adjustedBottomX = size.width * bottomX;
-    const float adjustedBottomY = size.height * bottomY;
-    thisRect = D2D1::RectF(adjustedTopX, adjustedTopY, 
-        adjustedBottomX, adjustedBottomY);
-    const D2D1_COLOR_F color = D2D1::ColorF(rValue, gValue, bValue);
-    hr = pRenderTarget->CreateSolidColorBrush(color, &pBrush);
-
-   
-
-    if (SUCCEEDED(hr))
-    {
-        pRenderTarget->FillRectangle(thisRect, pBrush);
-    }
-}
 
 //////////////////////////////////////////////////////////////////////////////
 //                             Normal Classes
@@ -178,33 +82,84 @@ inline void RectangleShape::cycleRectangle(float rValue, float gValue, float bVa
 
 TranslationStreamList::TranslationStreamList()
 {
-
+    // Initialize 8 in/outputs streams
+    for (int loopIndex = 0; loopIndex < 8; loopIndex++)
+    {
+        outputsArray[loopIndex] = new Integration_Output();
+        //inputsArray[loopIndex] = new Integration_Output();
+        active[loopIndex] = false;
+    }
 }
-inline void TranslationStreamList::cycleStreams(int inX, int inY)
+TranslationStreamList::TranslationStreamList(HWND inHandle, UINT inMessage, WPARAM inWParam,
+    LPARAM inLongParam)
 {
+    hWnd = inHandle;
+    uMsg = inMessage;
+    wParam = inWParam;
+    lParam = inLongParam;
 
+    // Initialize 8 in/outputs streams
+    for (int loopIndex = 0; loopIndex < 8; loopIndex++)
+    {
+        outputsArray[loopIndex] =  new Integration_Output(hWnd, uMsg, wParam, lParam);
+        active[loopIndex] = false;
+    }
 }
-inline void TranslationStreamList::setCoords(float inX, float inY, int inHeight, 
-    float inWidth, int stream)
+void TranslationStreamList::cycleStreams(std::string inputKey, int inX, 
+    int inY, HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget)
 {
-
+    outputsArray[0]->setCoords(0.1, 0.1, 0.4, 0.4);
+    outputsArray[0]->setText("Testing this");
+    outputsArray[0]->cycleText("Test", hr, pRenderTarget);
 }
-inline void TranslationStreamList::setText(std::string inText, int stream)
+void TranslationStreamList::setCoords(float inTopX, float inTopY, float inBottomX, 
+    float inBottomY, int stream)
 {
-
+    if (stream > 8 && stream >= 0)
+    {
+        outputsArray[stream]->setCoords(inTopX, inTopY, inBottomX, inBottomY);
+    }
 }
-inline void TranslationStreamList::setInStream(Integration_Input *inS, int stream)
+void TranslationStreamList::setHotkey(std::string inText)
 {
-
+    hDtKeys[focus] = inText;
 }
-inline void TranslationStreamList::setOutStream(Integration_Output *outS, int stream)
+void TranslationStreamList::setFocus(const int inFocus)
 {
-
+    if ((inFocus < 8) && (inFocus >= 0))
+    {
+        focus = inFocus;
+    }
 }
+void TranslationStreamList::setInStream(Integration_Input* & inS)
+{
+    // Deallocate dynamic memory and adjust pointer. Activate stream.
+    active[focus] = true;
+    delete inputsArray[focus];
+    inputsArray[focus] = inS;
+}
+void TranslationStreamList::setOutStream(Integration_Output* & outS)
+{
+    // Deallocate dynamic memory and adjust pointer. Activate stream.
+    active[focus] = true;
+    delete outputsArray[focus];
+    outputsArray[focus] = outS;
+}
+
+TranslationStreamList::~TranslationStreamList()
+{
+    // Deallocate memory
+    for (int loopIndex = 0; loopIndex < 8; loopIndex++)
+    {
+        delete outputsArray[loopIndex];
+        //delete inputsArray[index];
+    }
+}
+
 
 // MTILUIProgram
 
-inline LRESULT CALLBACK MTILUIProgram::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK MTILUIProgram::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     MTILUIProgram* pThis = NULL;
 
@@ -230,8 +185,34 @@ inline LRESULT CALLBACK MTILUIProgram::WindowProc(HWND hWnd, UINT uMsg, WPARAM w
     }
 }
 
+LRESULT CALLBACK MTILUIProgram::WindowProcChild(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    MTILUIProgram* pThis = NULL;
 
-inline LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
+    if (uMsg == WM_NCCREATE)
+    {
+        CREATESTRUCT* pCreate = (CREATESTRUCT*)lParam;
+        pThis = (MTILUIProgram*)pCreate->lpCreateParams;
+        SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)pThis);
+
+        pThis->screenWindow = hWnd;
+    }
+    else
+    {
+        pThis = (MTILUIProgram*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+    }
+    if (pThis)
+    {
+        return pThis->HandleMessage(uMsg, wParam, lParam);
+    }
+    else
+    {
+        return DefWindowProc(hWnd, uMsg, wParam, lParam);
+    }
+}
+
+
+LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
     {
@@ -243,13 +224,146 @@ inline LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lPa
     case WM_CREATE:
         programLongParam = lParam;
 
+        //
         //Initialize UI objects
+        //
+
+        // Title Bar
+        titleBox = TextBox(m, uMsg, wParam, lParam);
+        titleBox.setCoords(0.0, 0.0, 1.0, 0.2);
+        titleBox.setText("Machine Translation Integration Layer");
+
+        // Translation Stream Box
+        tranStreamBorder = RectangularBorder(m, uMsg, wParam, lParam);
+        tranStreamBorder.setCoords(0.1, 0.2, 0.4, 0.5);
+        tranStreamLabel = TextBox(m, uMsg, wParam, lParam);
+        tranStreamLabel.setCoords(0.1, 0.2, 0.4, 0.3);
+        tranStreamLabel.setText("Translation Stream");
+        tranStreamDrop = Dropdown(m, uMsg, wParam, lParam);
+        tranStreamDrop.setCoords(0.13, 0.35, 0.37, 0.4);
+        tranStreamDrop.appendItem("Stream 1");
+        tranStreamDrop.appendItem("Stream 2");
+        tranStreamDrop.appendItem("Stream 3");
+        tranStreamDrop.appendItem("Stream 4");
+        tranStreamDrop.appendItem("Stream 5");
+        tranStreamDrop.appendItem("Stream 6");
+        tranStreamDrop.appendItem("Stream 7");
+        tranStreamDrop.appendItem("Stream 8");
+
+        // Translation Stream Box
+        inputStreamBorder = RectangularBorder(m, uMsg, wParam, lParam);
+        inputStreamBorder.setCoords(0.1, 0.6, 0.4, 0.9);
+        inputStreamLabel = TextBox(m, uMsg, wParam, lParam);
+        inputStreamLabel.setCoords(0.1, 0.6, 0.4, 0.7);
+        inputStreamLabel.setText("Input Stream");
+        inputStreamDrop = Dropdown(m, uMsg, wParam, lParam);
+        inputStreamDrop.setCoords(0.13, 0.75, 0.37, 0.8);
+        inputStreamDrop.appendItem("Clipboard");
+        inputStreamDrop.appendItem("Input File");
+
+        // Output Box
+        outputStreamBorder = RectangularBorder(m, uMsg, wParam, lParam);
+        outputStreamBorder.setCoords(0.6, 0.2, 0.9, 0.9);
+        // Output Location Section
+        // Button Set Section
+        outputLocationLabel = TextBox(m, uMsg, wParam, lParam);
+        outputLocationLabel.setCoords(0.6, 0.2, 0.9, 0.3);
+        outputLocationLabel.setText("Output Location");
+        buttonSetRadio = ToggleButton(m, uMsg, wParam, lParam);
+        buttonSetRadio.setCoords(0.65, 0.35, 0.06);
+        buttonSetLabel = TextBox(m, uMsg, wParam, lParam);
+        buttonSetLabel.setCoords(0.65, 0.30, 0.78, 0.4);
+        buttonSetLabel.setText("Button Set");
+        buttonSetDrop = Dropdown(m, uMsg, wParam, lParam);
+        buttonSetDrop.setCoords(0.63, 0.38, 0.87, 0.43);
+        buttonSetDrop.appendItem("Set Button: \\");
+        buttonSetDrop.appendItem("Set Button: =");
+        // Fixed Coordinates Section
+        fixedSetRadio = ToggleButton(m, uMsg, wParam, lParam);
+        fixedSetRadio.setCoords(0.65, 0.5, 0.045);
+        fixedSetLabel = TextBox(m, uMsg, wParam, lParam);
+        fixedSetLabel.setCoords(0.645, 0.47, 0.85, 0.53);
+        fixedSetLabel.setText("Fixed Coordinates");
+        fixedTLXLabel = TextBox(m, uMsg, wParam, lParam);
+        fixedTLXLabel.setCoords(0.64, 0.55, 0.72, 0.60);
+        fixedTLXLabel.setText("TL     X");
+        fixedBRXLabel = TextBox(m, uMsg, wParam, lParam);
+        fixedBRXLabel.setCoords(0.64, 0.62, 0.72, 0.67);
+        fixedBRXLabel.setText("BR     X");
+        topLXEntry = TextEnterInt(m, uMsg, wParam, lParam);
+        topLXEntry.setCoords(0.72, 0.55, 0.76, 0.60);
+        topLXEntry.setText("0");
+        bottomRXEntry = TextEnterInt(m, uMsg, wParam, lParam);
+        bottomRXEntry.setCoords(0.72, 0.62, 0.76, 0.67);
+        bottomRXEntry.setText("0");
+        fixedTLYLabel = TextBox(m, uMsg, wParam, lParam);
+        fixedTLYLabel.setCoords(0.76, 0.55, 0.80, 0.60);
+        fixedTLYLabel.setText("Y");
+        fixedBRYLabel = TextBox(m, uMsg, wParam, lParam);
+        fixedBRYLabel.setCoords(0.76, 0.62, 0.80, 0.67);
+        fixedBRYLabel.setText("Y");
+        topLYEntry = TextEnterInt(m, uMsg, wParam, lParam);
+        topLYEntry.setCoords(0.80, 0.55, 0.84, 0.60);
+        topLYEntry.setText("0");
+        bottomRYEntry = TextEnterInt(m, uMsg, wParam, lParam);
+        bottomRYEntry.setCoords(0.80, 0.62, 0.84, 0.67);
+        bottomRYEntry.setText("0");
+        outputMethodLabel = TextBox(m, uMsg, wParam, lParam);
+        outputMethodLabel.setText("Output Method");
+        outputMethodLabel.setCoords(0.6, 0.70, 0.9, 0.75);
+        outputStreamDrop = Dropdown(m, uMsg, wParam, lParam);
+        outputStreamDrop.setCoords(0.63, 0.75, 0.87, 0.8);
+        outputStreamDrop.appendItem("Transparent");
+        outputStreamDrop.appendItem("Solid Fill");
+        outputStreamDrop.appendItem("Image");
+        outputStreamDrop.appendItem("Horizontal Stretch");
+        outputStreamDrop.appendItem("Vertical Stretch");
+        // Bottom Left Logo Label
+        logoLabel.setText("Labyrinth");
+        logoLabel.setCoords(0.0, 0.9, 0.15, 1.0);
+
+        // Translation Stream
+        translationList = new TranslationStreamList(screenWindow, uMsg, wParam, lParam);
+
+        //
+        // End initializing UI Elements
+        //
+
+        /*
         testCircle = Circle(m, uMsg, wParam, lParam);
         testCircle.setCoords(0.8, 0.8, 0.1);
         testRectangle = RectangleShape(m, uMsg, wParam, lParam);
-        testRectangle.setCoords(0.2, 0.2, 0.4, 0.4);
+        testRectangle.setCoords(0.4, 0.4, 0.6, 0.9);
         testButton = ToggleButton(m, uMsg, wParam, lParam);
         testButton.setCoords(0.5, 0.5, 0.2);
+
+        testText = TextBox(m, uMsg, wParam, lParam);
+        testText.setCoords(0.4, 0.4, 0.6, 0.9);
+        testText.setText("Testing stuff");
+
+        testNumBox = TextEnterInt(m, uMsg, wParam, lParam);
+        testNumBox.setCoords(0.8, 0.1, 0.83, 0.13);
+
+        testDrop = Dropdown(m, uMsg, wParam, lParam);
+        testDrop.setCoords(0.5, 0.4, 0.7, 0.45);
+        testDrop.appendItem("Test 1");
+        testDrop.appendItem("Test 2");
+        testDrop.appendItem("Test 3");
+        testDrop.appendItem("Test 4");
+        testDrop.appendItem("Test 5");
+        */
+
+
+        //screenRectTest = RectangleShape(systemHandle, uMsg, wParam, lParam);
+        //screenRectTest.setCoords(0.2, 0.2, 0.4, 0.4);
+
+        /*
+        testOverlay = Vertical_Output(screenWindow, uMsg, wParam, lParam);
+        testOverlay.setCoords(0.5, 0.5, 0.9, 0.9);
+        testOverlay.setText("Testing others");
+        testOverlay2 = RectangleShape(screenWindow, uMsg, wParam, lParam);
+        testOverlay2.setCoords(0.3, 0.3, 0.6, 0.6);
+        */
 
         break;
     case WM_CLOSE:
@@ -260,6 +374,7 @@ inline LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lPa
         return 0;
     case WM_PAINT:
         PAINTSTRUCT ps;
+        PAINTSTRUCT screenPaintStruct;
 
         // Set up Direct 2D factory and other one time only things
         static ID2D1Factory* pFactory = NULL;
@@ -270,43 +385,109 @@ inline LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lPa
             return DefWindowProc(m, uMsg, wParam, lParam);;  
         }
         static ID2D1HwndRenderTarget* pRenderTarget = NULL;
+        static ID2D1HwndRenderTarget* screenRenderTarget = NULL;
         static ID2D1SolidColorBrush* pBrush = NULL;
-        const D2D1_COLOR_F color = D2D1::ColorF(1.0, 0.1, 0.1);
+        static ID2D1SolidColorBrush* screenBrush = NULL;
+        static const D2D1_COLOR_F color = D2D1::ColorF(0.9, 0.9, 0.95);
+        static const D2D1_COLOR_F screenColor = D2D1::ColorF(0.0, 0.0, 0.0);
+
         // Get the render target running as well as the background brush
         HRESULT hr = S_OK;
         if (pRenderTarget == NULL)
         {
             RECT rc;
             GetClientRect(m, &rc);
+            GetClientRect(screenWindow, &screenRect);
 
             D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
+            D2D1_SIZE_U screenSize = D2D1::SizeU(screenRect.right, screenRect.bottom);
 
             hr = pFactory->CreateHwndRenderTarget(
                 D2D1::RenderTargetProperties(),
                 D2D1::HwndRenderTargetProperties(m, size),
                 &pRenderTarget);
 
+            
+            hr = pFactory->CreateHwndRenderTarget(
+                D2D1::RenderTargetProperties(),
+                D2D1::HwndRenderTargetProperties(screenWindow, screenSize),
+                &screenRenderTarget);
+            
+
             if (SUCCEEDED(hr))
             {
                 // Get background brush.
                 hr = pRenderTarget->CreateSolidColorBrush(color, &pBrush);
+                hr = pRenderTarget->CreateSolidColorBrush(screenColor, &screenBrush);
             }
-           }
+         }
 
         if (SUCCEEDED(hr))
         {
 
 
             // All drawing for one frame should start here
-            HDC hdc = BeginPaint(m, & ps);
+            HDC hdc;
+            
+            hdc = BeginPaint(m, & ps);
             pRenderTarget->BeginDraw();
 
             pRenderTarget->Clear(color);
+
+            // Cycle UI objects
+            // Title
+            titleBox.cycleText(0.1, 0.1, 0.1, hr, pRenderTarget);
+            // Translation Stream Box
+            tranStreamBorder.cycleRectangle(0.1, 0.1, 0.1, hr, pRenderTarget);
+            tranStreamLabel.cycleText(0.1, 0.1, 0.1, hr, pRenderTarget);
+            // Input Source Box
+            inputStreamBorder.cycleRectangle(0.1, 0.1, 0.1, hr, pRenderTarget);
+            inputStreamLabel.cycleText(0.1, 0.1, 0.1, hr, pRenderTarget);
+            inputStreamDrop.cycleBox(mouseX, mouseY, clicked, hr, pRenderTarget);
+            // Output Box
+            outputStreamBorder.cycleRectangle(0.1, 0.1, 0.1, hr, pRenderTarget);
+            // Output Location Section
+            outputLocationLabel.cycleText(0.1, 0.1, 0.1, hr, pRenderTarget);
+            buttonSetRadio.cycleButton(mouseX, mouseY, clicked, hr, pRenderTarget);
+            buttonSetLabel.cycleText(0.1, 0.1, 0.1, hr, pRenderTarget);
+            fixedSetRadio.cycleButton(mouseX, mouseY, clicked, hr, pRenderTarget);
+            fixedSetLabel.cycleText(0.1, 0.1, 0.1, hr, pRenderTarget);
+            fixedTLXLabel.cycleText(0.1, 0.1, 0.1, hr, pRenderTarget);
+            fixedBRXLabel.cycleText(0.1, 0.1, 0.1, hr, pRenderTarget);
+            topLXEntry.cycleBox("", mouseX, mouseY, clicked, hr, pRenderTarget);
+            bottomRXEntry.cycleBox("", mouseX, mouseY, clicked, hr, pRenderTarget);
+            fixedTLYLabel.cycleText(0.1, 0.1, 0.1, hr, pRenderTarget);
+            fixedBRYLabel.cycleText(0.1, 0.1, 0.1, hr, pRenderTarget);
+            topLYEntry.cycleBox("", mouseX, mouseY, clicked, hr, pRenderTarget);
+            bottomRYEntry.cycleBox("", mouseX, mouseY, clicked, hr, pRenderTarget);
+            // Output Method Section
+            outputMethodLabel.cycleText(0.1, 0.1, 0.1, hr, pRenderTarget);
+            outputStreamDrop.cycleBox(mouseX, mouseY, clicked, hr, pRenderTarget);
+            // Bottom Left Logo Label
+            logoLabel.cycleText(0.1, 0.1, 0.1, hr, pRenderTarget);
+            // Order Dependent Section
+            // These items are on a section of the layout in which it matters
+            // which order they are drawn in to prevent bugs. As such,
+            // they are down here rather than in their logical section
+            // above.
+            tranStreamDrop.cycleBox(mouseX, mouseY, clicked, hr, pRenderTarget);
+            buttonSetDrop.cycleBox(mouseX, mouseY, clicked, hr, pRenderTarget);
+
+
+            /*
             testCircle.cycleCircle(0.0, 1.0, 1.0, hr, pRenderTarget);
             testRectangle.cycleRectangle(0.0, 1.0, 1.0, hr, pRenderTarget);
-            testButton.cycleButton(mouseX, mouseY, clicked, hr, pRenderTarget);
+            //testButton.cycleButton(mouseX, mouseY, clicked, hr, pRenderTarget);
+            //testText.cycleText(0.9, 0.1, 0.1, hr, pRenderTarget);
+            testNumBox.cycleBox("", mouseX, mouseY, clicked, hr, pRenderTarget);
+            //testNumBox.setText("125");
+            //testNumBox.cycleText(0.9, 0.9, 0.1, hr, pRenderTarget);
+            testDrop.cycleBox(mouseX, mouseY, clicked, hr, pRenderTarget);
+            //screenRectTest.cycleRectangle(0.0, 1.0, 1.0, hr, pRenderTarget);
             //pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::SkyBlue));
             //pRenderTarget->FillRectangle(thisRect, pBrush);
+            */
+            
 
             hr = pRenderTarget->EndDraw();
 
@@ -324,15 +505,43 @@ inline LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lPa
                     *&pBrush = NULL;
                 }
             }
-
-
             EndPaint(m, &ps);
+            
+            
+            
+            // Start drawing to screen overlay
+            hdc = BeginPaint(screenWindow, &screenPaintStruct);
+            screenRenderTarget->BeginDraw();
+            screenRenderTarget->Clear(screenColor);
+            //testOverlay2.cycleRectangle(0.0, 1.0, 1.0, hr, screenRenderTarget);
+            //testOverlay.cycleText("Can you just make this easy for me and show up nice and easy.", hr, screenRenderTarget);
+            translationList->cycleStreams("", mouseX, mouseY, hr, screenRenderTarget);
+
+            // Make sure to resize objects
+            if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
+            {
+                if (*&pRenderTarget)
+                {
+                    (*&pRenderTarget)->Release();
+                    *&pRenderTarget = NULL;
+                }
+                if (*&pBrush)
+                {
+                    (*&pBrush)->Release();
+                    *&pBrush = NULL;
+                }
+            }
+
+            // End screen overlay drawing
+            hr = screenRenderTarget->EndDraw();
+            EndPaint(screenWindow, &screenPaintStruct);
+            
         }
     }
     return DefWindowProc(m, uMsg, wParam, lParam);
 }
 
-inline bool MTILUIProgram::ProcessMessages()
+bool MTILUIProgram::ProcessMessages()
 {
     MSG msg = {};
     while (PeekMessage(&msg, nullptr, 0u, 0u, PM_REMOVE))
@@ -349,7 +558,7 @@ inline bool MTILUIProgram::ProcessMessages()
     return true;
 }
 
-inline BOOL MTILUIProgram::Create(
+BOOL MTILUIProgram::Create(
     PCWSTR lpWindowName,
     DWORD dwStyle,
     DWORD dwExStyle,
@@ -365,6 +574,10 @@ inline BOOL MTILUIProgram::Create(
     wc.lpfnWndProc = MTILUIProgram::WindowProc;
     wc.hInstance = GetModuleHandle(NULL);
     wc.lpszClassName = L"Machine Translation Integration Layer";
+
+    screenWindowClass.hInstance = GetModuleHandle(NULL);
+    screenWindowClass.lpszClassName = L"ChildClassW";
+    screenWindowClass.lpfnWndProc = MTILUIProgram::WindowProcChild;
 
     // Set application icon
     wc.hIcon = (HICON)LoadImage(
@@ -384,20 +597,131 @@ inline BOOL MTILUIProgram::Create(
     // class meaning.
     RegisterClass(&wc);
 
+    if (RegisterClass(&screenWindowClass) == 0)
+    {
+        std::cout << "Error registering overlay class." << std::endl;
+    }
+
     // See: https://docs.microsoft.com/en-us/windows/
     //      win32/api/winuser/nf-winuser-createwindowexa
     // for more information on these parameters
     m = CreateWindowEx(
+        //WS_EX_LAYERED |
+        //WS_EX_TRANSPARENT | // Don't hittest this window
+        WS_EX_TOPMOST | 
+        //WS_EX_TOOLWINDOW | 
         dwExStyle,                          // Default exWindow style
         wc.lpszClassName,                   // Window class name
         lpWindowName,                       // Window name, using default
-        dwStyle,                            // Windwo style, using default
+        dwStyle | 
+        //WS_POPUP | 
+        WS_VISIBLE |
+        NULL
+        ,                            // Windwo style, using default
         x, y,                               // Default screen coordinates            
         nWidth, nHeight,                    // Default window dimensions
         hWndParent, hMenu, GetModuleHandle(NULL), this
     );
 
-    HDC hdc = GetDC(m);
+    /*
+    SetLayeredWindowAttributes(
+        m,
+        RGB(0, 0, 0),
+        byte(255),
+        LWA_ALPHA |
+        LWA_COLORKEY
+    );
+    */
+    
+    MoveWindow(m,
+        0, 0,                   // Top Left of screen
+        800,    //
+        600,
+        TRUE);
+    
+    /*
+    SetWindowLong(m, GWL_STYLE, 1);  // Without 1 point border = white rectangle 
+    SetWindowPos(m, 0, 0, 0, 800, 600, SWP_FRAMECHANGED);
+    
+    ShowWindow(m, SW_SHOW);
+    */
+
+
+
+    /*
+    screenWindow = CreateWindowEx(
+        //WS_EX_LAYERED | // Layered Windows
+        //WS_EX_TRANSPARENT | // Don't hittest this window
+        //WS_EX_TOPMOST | WS_EX_TOOLWINDOW
+        dwExStyle,
+        L"MTIL Layer", L"MTIL Layer", WS_POPUP | WS_VISIBLE, 0,
+        0, 800, 600, m, hMenu, GetModuleHandle(NULL), this
+    );*/
+
+
+    // Get the identifier for the whole screen
+    systemContext = GetDC(NULL);
+    systemHandle = GetDesktopWindow();
+
+    //Adjust overlay window size to whole screen and show
+    RECT screenRect;
+    GetClientRect(systemHandle, &screenRect);
+    
+    // Keep a small border outside of the overlay to prevent
+    // occasional issues
+    int border = -10;
+    int leftFactor = 1;
+    int rightFactor = 1;
+    int upFactor = 4;
+    int downFactor = 2;
+
+    
+    //border = 0;
+
+
+    screenWindow = CreateWindowEx(
+        WS_EX_LAYERED | // Layered Windows
+        WS_EX_TRANSPARENT | // Don't hittest this window
+        WS_EX_TOPMOST |
+        WS_EX_TOOLWINDOW 
+        | dwExStyle
+        ,screenWindowClass.lpszClassName,
+        lpWindowName,
+        dwStyle | 
+        WS_VISIBLE | NULL,
+        2 * border, 2 * border, 
+        screenRect.right - 1 * border, screenRect.bottom - 1 * border,
+        hWndParent, hMenu,
+        GetModuleHandle(NULL),
+        this);
+
+    // Enforce proper overview size and transparency outside
+    // of overlay effects.
+    SetLayeredWindowAttributes(
+        screenWindow,
+        // This function works similar to a greenscreen.
+        // All pixels of the below color will become transparent
+        // on the overlay window.
+        RGB(0, 0, 0),
+        byte(200),
+        LWA_ALPHA |
+        LWA_COLORKEY
+    );
+    SetWindowLong(screenWindow, GWL_STYLE, 0);  
+    MoveWindow(screenWindow,
+        leftFactor * border, upFactor * border, // Almost top Left of screen
+        screenRect.right - rightFactor * border,// Almost bottom right
+        screenRect.bottom -  downFactor * border,
+        TRUE);
+    SetWindowPos(screenWindow, 0, leftFactor * border, upFactor * border, 
+        screenRect.right - rightFactor * border, screenRect.bottom - 
+        downFactor * border, SWP_FRAMECHANGED);
+    
+
+    ShowWindow(screenWindow, SW_SHOW);
+
+
+
     DrawIcon(hdc, 10, 20, wc.hIcon);
 
     return (m ? TRUE : FALSE);
@@ -417,9 +741,12 @@ void MTILUIProgram::runMTIL()
         // mostly be antiquated these days,
         // SW_NORMAL just uses an OS default value.
         ShowWindow(m, SW_NORMAL);
+
+        ShowWindow(screenWindow, SW_SHOW);
+
     }
 
-    HDC hdc = GetDC(m);
+    hdc = GetDC(m);
 
     bool running = true;
 
@@ -434,11 +761,13 @@ void MTILUIProgram::runMTIL()
             running = false;
         }
 
-        //Cap framerate at 10 fps, we're showing text, not fancy animations.
-        Sleep(0.1);
+        // Cap framerate at around 30 fps for performance, 
+        // we're showing text, not fancy animations.
+        Sleep(0.03);
 
         // Set the window to ready to draw for the next frame.
         RedrawWindow(m, NULL, NULL, RDW_INTERNALPAINT);
+        RedrawWindow(screenWindow, NULL, NULL, RDW_INTERNALPAINT);
 
         // It'll get set to its true values from the messages
         clicked = false;
@@ -454,172 +783,17 @@ void MTILUIProgram::runMTIL()
     }
 }
 
-inline void MTILUIProgram::resizeAll(int& inX, int& inY)
+void MTILUIProgram::resizeAll(int& inX, int& inY)
 {
     
 }
 
 MTILUIProgram::~MTILUIProgram()
 {
-
+    delete translationList;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-//                             Child Classes
-//////////////////////////////////////////////////////////////////////////////
 
-// ToggleButton
-inline bool ToggleButton::cycleButton(int inX, int inY, bool inClicked,
-    HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget)
-{
-    D2D1_SIZE_F size = pRenderTarget->GetSize();
-    const float adjustedRadius = min(size.width, size.height) * radius / 2;
-    float useRadius;
-    
-
-    // Show either onClick state, or toggle state if clicked
-
-    if (boundsCheck(inX, inY, size))
-    {
-        // Show onClick
-        if (inClicked == true)
-        {
-            
-            this->cycleCircle(0.5, 0.5, 0.8, hr, pRenderTarget);
-            toggled = true;
-        }
-        // Show onHover
-        else
-        {
-            float tempRad = radius;
-            this->cycleCircle(0.7, 0.7, 0.7, hr, pRenderTarget);
-            radius = radius * 0.67;
-            this->cycleCircle(0.75, 0.75, 0.75, hr, pRenderTarget);
-            radius = tempRad;
-        }
-    }
-    else
-    {
-        // Show toggled
-        if (toggled == true)
-        {
-            float tempRad = radius;
-            this->cycleCircle(0.8, 0.8, 0.8, hr, pRenderTarget);
-            radius = radius * 0.67;
-            this->cycleCircle(0.4, 0.4, 0.4, hr, pRenderTarget);
-            radius = tempRad;
-        }
-        // Show default
-        else
-        {
-            float tempRad = radius;
-            this->cycleCircle(0.8, 0.8, 0.8, hr, pRenderTarget);
-            radius = radius * 0.67;
-            this->cycleCircle(0.75, 0.75, 0.75, hr, pRenderTarget);
-            radius = tempRad;
-        }
-    }
-
-    return toggled;
-}
-inline bool ToggleButton::boundsCheck(const int& inX, const int& inY, 
-    D2D1_SIZE_F size)
-{
-    const float adjustedRadius = min(size.width, size.height) * radius / 2;
-    float useRadius;
-    // Check cursor is within upper and lower bounds for X and Y
-    if (((size.width * centerX - adjustedRadius) < inX) && 
-        (((size.width * centerX) + adjustedRadius) > inX) && 
-        (((size.height * centerY) - adjustedRadius) < inY) && 
-        (((size.height * centerY) + adjustedRadius) > inY))
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-// TextBox
-inline void TextBox::setText(std::string inText)
-{
-    text = inText;
-}
-inline void TextBox::cycleText(HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget) 
-{
-    /*
-    ID2D1Factory* pD2DFactory;
-    hr = D2D1CreateFactory(
-        D2D1_FACTORY_TYPE_SINGLE_THREADED,
-        &pD2DFactory
-    );
-    IDWriteFactory* pDWriteFactory = nullptr;
-
-    static const WCHAR msc_fontName[] = L"Verdana";
-    static const FLOAT msc_fontSize = 50;
-    ID2D1SolidColorBrush* textBoxBlackBrush = nullptr;
-    IDWriteTextFormat* textBoxTextFormat = nullptr;
-
-    // Create a text factory at most once per program per class.
-    // For details see:
-    //      https://docs.microsoft.com/en-us/windows/win32/direct2d/
-    //      how-to--draw-text
-    if (SUCCEEDED(hr))
-    {
-        hr = DWriteCreateFactory(
-            DWRITE_FACTORY_TYPE_SHARED,
-            __uuidof(IDWriteFactory),
-            reinterpret_cast<IUnknown**>(&pDWriteFactory));
-    }
-    if (SUCCEEDED(hr))
-    {
-        // Create a DirectWrite text format object.
-        hr = pDWriteFactory->CreateTextFormat(
-            msc_fontName,
-            NULL,
-            DWRITE_FONT_WEIGHT_REGULAR,
-            DWRITE_FONT_STYLE_NORMAL,
-            DWRITE_FONT_STRETCH_NORMAL,
-            msc_fontSize,
-            L"en-us", //locale
-            &textBoxTextFormat
-        );
-    }
-    if (SUCCEEDED(hr))
-    {
-        textBoxTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-        textBoxTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
-    }
-
-
-    //TODO: Replace with text to WCHAR
-    WCHAR textBoxWCHAR[] = L"Testing";
-
-    // Retrieve the size of the render target.
-    D2D1_SIZE_F renderTargetSize = pRenderTarget->GetSize();
-
-
-    pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
-
-
-    pRenderTarget->DrawText(
-        textBoxWCHAR,
-        ARRAYSIZE(textBoxWCHAR) - 1,
-        textBoxTextFormat,
-        D2D1::RectF(0, 0, renderTargetSize.width, renderTargetSize.height),
-        textBoxBlackBrush
-    );
-    */
-
-}
-
-// TextEnterInt
-
-inline void TextEnterInt::cycleText(HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget)
-{
-
-}
 
 //#endif
 

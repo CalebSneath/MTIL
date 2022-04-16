@@ -13,6 +13,9 @@
 #pragma once
 
 #include <string>
+#include <iostream>
+#include <windows.h>
+#include <fstream>
 
 ///////////////////////////////////////////////////////////////////////////////
 //                             Abstract Classes
@@ -32,7 +35,7 @@ class Integration_Input
 public:
     virtual void updateText() = 0;
     virtual std::string getText() = 0;
-    std::string getTextNoUpdate();
+    std::string getTextNoUpdate() { return inputText; }
 protected:
     std::string inputText;
 };
@@ -47,11 +50,12 @@ class Clipboard_Input : public Integration_Input
 {
 public:
     void updateText();
-    // Any necessary constructor overloads
     std::string getText();
-    std::string getTextNoUpdate();
+    std::string getTextNoUpdate() {return inputText;}
 private:
-    // Any internal implementation details
+    // since getText Doesn't return we must save the 'text' variable
+    //that outputs from the clipboard into a variable here called 'newText'
+    std::string newText;
 };
 
 // Class: File_Input
@@ -60,12 +64,19 @@ class File_Input : public Integration_Input
 {
 public:
     File_Input();
-    File_Input(std::string);
     void updateText();
-    // Any necessary constructor overloads
     std::string getText();
-    std::string getTextNoUpdate();
+    std::string getTextNoUpdate() {return inputText;}
+    ~File_Input() {files[index] = false;}
+
 private:
     std::string fileName;
+    static bool files[8];
+    static std::string names[8];
+    std::ofstream createFile;
+    std::ifstream infile;
+    std::string store;
+    int index;
     // Any internal implementation details
 };
+
