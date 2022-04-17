@@ -157,13 +157,13 @@ class TextEnterInt : public TextBox
         TextEnterInt();// Mandatory.
         TextEnterInt(HWND inHandle, UINT inMessage, WPARAM inWParam,
             LPARAM inLongParam);
-        int cycleBox(std::string inputKey, int inX, int inY, bool inClicked,
+        int cycleBox(char inputKey, int inX, int inY, bool inClicked,
             HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget);
         void setText(std::string inText);
+        bool active = false;
     protected:
         bool boundsCheck(const int& inX, const int& inY, D2D1_SIZE_F size);
         void processKey(std::string inputKey);
-        bool active = false;
         bool clicked = false;
         std::string buffer;
 };
@@ -177,10 +177,10 @@ public:
     int cycleBox(int inX, int inY, bool inClicked,
         HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget);
     void appendItem(std::string newItem);
+    bool active = false;
 protected:
     int boundsCheck(const int& inX, const int& inY, D2D1_SIZE_F size);
     int focus = 0;
-    bool active = false;
     bool clicked = false;
     bool collapseWait = false;
     std::vector<std::string> prompts;

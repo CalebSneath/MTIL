@@ -32,12 +32,12 @@
 //          without checking for updates from the text source.
 class Integration_Input
 {
-public:
-    virtual void updateText() = 0;
-    virtual std::string getText() = 0;
-    std::string getTextNoUpdate() { return inputText; }
-protected:
-    std::string inputText;
+    public:
+        virtual void updateText() = 0;
+        virtual std::string getText() = 0;
+        std::string getTextNoUpdate() { return inputText; }
+    protected:
+        std::string inputText = "";
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -49,13 +49,14 @@ protected:
 class Clipboard_Input : public Integration_Input
 {
 public:
+    Clipboard_Input();
     void updateText();
     std::string getText();
     std::string getTextNoUpdate() {return inputText;}
 private:
     // since getText Doesn't return we must save the 'text' variable
     //that outputs from the clipboard into a variable here called 'newText'
-    std::string newText;
+    std::string newText = "";
 };
 
 // Class: File_Input
@@ -70,13 +71,12 @@ public:
     ~File_Input() {files[index] = false;}
 
 private:
-    std::string fileName;
+    std::string fileName = "";
     static bool files[8];
     static std::string names[8];
     std::ofstream createFile;
     std::ifstream infile;
-    std::string store;
+    std::string store = "";
     int index;
-    // Any internal implementation details
 };
 

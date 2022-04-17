@@ -104,8 +104,8 @@ Integration_Output::Integration_Output()
         }
     }
 }
-Integration_Output::Integration_Output(HWND inHandle, UINT inMessage, WPARAM inWParam,
-    LPARAM inLongParam)
+Integration_Output::Integration_Output(HWND inHandle, UINT inMessage, 
+    WPARAM inWParam, LPARAM inLongParam)
 {
     hWnd = inHandle;
     uMsg = inMessage;

@@ -44,18 +44,18 @@ public:
     TranslationStreamList();
     TranslationStreamList(HWND inHandle, UINT inMessage, WPARAM inWParam,
         LPARAM inLongParam);
-    void cycleStreams(std::string inputKey, int inX,
-        int inY, HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget);
+    void cycleStreams(char inputKey, float inX,
+        float inY, HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget);
     void setCoords(float inTopX, float inTopY, float inBottomX, float inBottomY, int stream);
-    void setHotkey(std::string inText);
+    void setHotkey(char inText);
     void setFocus(const int inFocus);
-    void setInStream(Integration_Input*& inS);
-    void setOutStream(Integration_Output* & outS);
+    void setInStream(Integration_Input& inS);
+    void setOutStream(Integration_Output& outS);
     ~TranslationStreamList();
 private:
     Integration_Input* inputsArray[8];
     Integration_Output* outputsArray[8];
-    std::string hDtKeys[8];
+    char hDtKeys[8];
     bool active[8];
     int focus = 0;
     std::string buffer = "";
@@ -63,6 +63,7 @@ private:
     float bufferTopY = -1;
     float bufferBottomX = -1;
     float bufferBottomY = -1;
+    
 
     // Window variables
     HWND hWnd;
@@ -96,9 +97,35 @@ class MTILUIProgram
         static LRESULT CALLBACK WindowProcChild(HWND hWnd, UINT uMsg,
             WPARAM wParam, LPARAM lParam);
     private: 
+        bool running = true;
+        // Determines which stream is selected in the GUI
+        int focus = 0;
+
+        // Overlay size variables
+        // Absolute pixel values (integers)
+        int overlayWidth = 0;
+        int overlayHeight = 0;
+
+        // Converted coordinate entry numbers
+        // Uses a 0 - 1 scale.
+        float tempTopX = 0;
+        float tempTopY = 0;
+        float tempBottomX = 0;
+        float tempBottomY = 0;
+
+        // Mouse Coordinates for overlay
+        // Uses a 0 - 1 scale
+        float overlayX = 0;
+        float overlayY = 0;
+
+        
+        void handleInOut();
+
         // UI Window Variables
         WNDCLASS wc = { 0 };
         HWND m;
+        char keyPressed = 'a';
+        bool keyDown = false;
         int mouseX;
         int mouseY;
         bool clicked;
@@ -144,6 +171,7 @@ class MTILUIProgram
         TextBox outputMethodLabel;
         Dropdown outputStreamDrop;
         TextBox logoLabel;
+
 
         // Translation Stream List Object
         TranslationStreamList* translationList;

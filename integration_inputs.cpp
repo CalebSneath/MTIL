@@ -24,27 +24,48 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 // Clipboard_Input
+Clipboard_Input::Clipboard_Input()
+{
+    getText();
+}
 void Clipboard_Input::updateText() {
     OpenClipboard(nullptr);
-    HANDLE hData = GetClipboardData(CF_TEXT);
+    // Make sure the clipboard actually has text so we don't pass in any
+    // noncharacter data to things expecting strings or chars. Otherwise,
+    // just keep the old text.
+    if (IsClipboardFormatAvailable(CF_TEXT) || 
+        IsClipboardFormatAvailable(CF_UNICODETEXT))
+    {
+        HANDLE hData = GetClipboardData(CF_TEXT);
 
-    char* pszText = static_cast<char*>(GlobalLock(hData));
-    std::string text(pszText);
+        char* pszText = static_cast<char*>(GlobalLock(hData));
+        std::string text(pszText);
 
-    GlobalUnlock(hData);
+        GlobalUnlock(hData);
+
+        newText = text;
+    }
     CloseClipboard();
-
-    newText = text;
 }
 std::string Clipboard_Input::getText() 
 {
+    updateText();
     inputText = newText;
     return inputText;
 }
 
 // File_Input
+// Static Member Variables
+bool File_Input::files[8] = { false, false, false, false, false, 
+    false, false, false };
+std::string File_Input::names[8] = { "MTILFile1.in", "MTILFile2.in", 
+    "MTILFile3.in", "MTILFile4.in", "MTILFile5.in", "MTILFile6.in", 
+    "MTILFile7.in", "MTILFile8.in" };
 File_Input::File_Input() 
 {
+    // Iterate through the input files
+    // Grab the first and mark it as
+    // in use to all other input streams.
     for (int i = 0; i < 8; i++) {
         if (files[i] == false) {
             fileName = names[i];
@@ -53,30 +74,34 @@ File_Input::File_Input()
             break;
         }
     }
-    //Commented out don't need to create the file here
-    //createFile.open(fileName);
-    //createFile.close();
+
+    getText();
 }
 void File_Input::updateText() 
 {
     std::string temp = "";
     store = "";
     infile.open(fileName);
-    while (!infile.eof()) {
-        infile >> temp;
-        if (store[0]) {
-            store += " " + temp + " ";
+    // Go through the input file
+    // and add every character to a string.
+    // Assuming it even opens.
+    if (infile.is_open())
+    {
+        while (!infile.eof()) {
+            infile >> temp;
+            if (store[0]) {
+                store += " " + temp + " ";
+            }
+            else {
+                store += temp + " ";
+            }
         }
-        else {
-            store += temp + " ";
-        }
+        infile.close();
     }
-    infile.close();
 }
-std::string File_Input::getText() {
-    inputText += " " + store;
+std::string File_Input::getText() 
+{
+    updateText();
+    inputText = store;
     return inputText;
 }
-// Static Member Variables
-bool File_Input::files[8] = { false, false, false, false, false, false, false, false };
-std::string File_Input::names[8] = { "MTILFile1", "MTILFile2", "MTILFile3", "MTILFile4", "MTILFile5", "MTILFile6", "MTILFile7", "MTILFile8" };

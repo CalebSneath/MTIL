@@ -38,7 +38,7 @@ class Integration_Output: public TextBox
         Integration_Output();// Mandatory.
         Integration_Output(HWND inHandle, UINT inMessage, WPARAM inWParam,
             LPARAM inLongParam);
-        void cycleText(std::string inText,
+        virtual void cycleText(std::string inText,
             HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget);
     protected:
         int xOffset = 0;

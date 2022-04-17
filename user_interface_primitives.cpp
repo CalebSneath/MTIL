@@ -256,7 +256,6 @@ bool ToggleButton::cycleButton(int inX, int inY, bool inClicked,
     const float adjustedRadius = min(size.width, size.height) * radius / 2;
     float useRadius;
 
-
     // Show either onClick state, or toggle state if clicked
 
     if (boundsCheck(inX, inY, size))
@@ -496,9 +495,12 @@ TextEnterInt::TextEnterInt(HWND inHandle, UINT inMessage, WPARAM inWParam,
     wParam = inWParam;
     lParam = inLongParam;
 }
-int TextEnterInt::cycleBox(std::string inputKey, int inX, int inY, bool inClicked,
+int TextEnterInt::cycleBox(char inputKey, int inX, int inY, bool inClicked,
     HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget)
 {
+    // Convert to string to use later
+    std::string stringKey = "";
+    stringKey += inputKey;
 
     D2D1_SIZE_F size = pRenderTarget->GetSize();
 
@@ -509,13 +511,17 @@ int TextEnterInt::cycleBox(std::string inputKey, int inX, int inY, bool inClicke
         // Show onClick, blue, and activate
         if (inClicked == true)
         {
-            processKey(inputKey);
+            processKey(stringKey);
             cycleRectangle(0.5, 0.5, 0.8, hr, pRenderTarget);
             active = true;
         }
         // Show onHover
         else
         {
+            if (active == true)
+            {
+                processKey(stringKey);
+            }
             cycleRectangle(0.75, 0.75, 0.78, hr, pRenderTarget);
         }
     }
@@ -524,14 +530,8 @@ int TextEnterInt::cycleBox(std::string inputKey, int inX, int inY, bool inClicke
         cycleRectangle(0.75, 0.75, 0.78, hr, pRenderTarget);
         if (active == true)
         {
-            processKey(inputKey);
+            processKey(stringKey);
 
-            // If user clicks away, make temporary value permanent
-            if (inClicked == true)
-            {
-                active = false;
-                buffer = text;
-            }
         }
     }
 
@@ -563,28 +563,30 @@ bool TextEnterInt::boundsCheck(const int& inX, const int& inY,
 }
 void TextEnterInt::processKey(std::string inputKey)
 {
+
     // Early exit for no key
     if (inputKey != "")
     {
         int tempText = stoi(text);
 
         //Cut off right most digit with integer division
-        if (!std::isdigit((unsigned char)inputKey[0]))
+        if (!std::isdigit((char)inputKey[0]))
         {
-            if (inputKey == "backspace")
+            if (inputKey == "b")
             {
-                tempText /= 10;
-                text = tempText;
+                tempText = tempText / 10;
+                text = std::to_string(tempText);
             }
-            else if (inputKey == "enter")
+            else if (inputKey == "e")
             {
+                active = false;
                 buffer = text;
             }
         }
         else
         {
-            tempText *= 10 + inputKey[0];
-            text = tempText;
+            tempText = (tempText * 10) + stoi(inputKey);
+            text = std::to_string(tempText);
         }
     }
 }
