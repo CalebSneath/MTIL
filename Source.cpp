@@ -79,6 +79,9 @@
 int main(int flagCount, char* debugFlags[])
 {
     bool debugSession = false;
+    HWND noConsole = GetConsoleWindow();
+
+    // Debug Mode
     if (flagCount > 1)
     {
         std::string debugCheck = debugFlags[1];
@@ -91,14 +94,15 @@ int main(int flagCount, char* debugFlags[])
     else
     {
         //Remove the console so only the game shows, reducing clutter
-        HWND noConsole = GetConsoleWindow();
-        //ShowWindow(noConsole, SW_HIDE);
+        ShowWindow(noConsole, SW_HIDE);
     }
 
+    // Run the program
     MTILUIProgram MTILInstance;
     MTILInstance.runMTIL();
+    // Uncomment if you run this code and want your console window back.
+    //ShowWindow(noConsole, SW_SHOW);
 
-    std::cout << "Exiting" << std::endl;
     return 0;
 }
 //#endif

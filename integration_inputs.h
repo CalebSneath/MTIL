@@ -46,6 +46,12 @@ class Integration_Input
 
 // Class: Clipboard_Input
 // Purpose: A class to collect input from the clipboard for an application.
+// Usage Information: Call the constructor and use getText()
+// to grab from the clipboard. Note, guards are in place to prevent 
+// the program from crashing due to receiving unexpected non-text
+// input from the clipboard. In such a case, getText() will simply return
+// the last text available to it. Regardless, in some cases, 
+// mixed text format entries can cause the program to fail.
 class Clipboard_Input : public Integration_Input
 {
 public:
@@ -61,6 +67,16 @@ private:
 
 // Class: File_Input
 // Purpose: A class to collect input from an input file.
+// Usage Information: Call the constructor and use getText()
+// to grab from the input file.
+// Only eight streams can usefully exist
+// at once. Objects scroll through a list of names formatted 
+// as "MTILFileX.in" where X ranges from 1 to 8. 
+// Note: It is fine to change file extensions. The program
+// doesn't actually use them (outside of as a file address).
+// It's just a normal text file. Also, file names
+// are chosen in order of creation down the list.
+// Inheritance information: See Integration_Output for usage.
 class File_Input : public Integration_Input
 {
 public:

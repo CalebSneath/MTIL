@@ -253,109 +253,210 @@ void MTILUIProgram::handleInOut()
 {
     while(running == true)
     {
+        // Wait until the next cycle of processing.
+        if (waitSync == false)
+        {
+            waitSync = true;
 
-        // 0x8000 and 0x10000 are the values for 32 and 64 bit machines
-        // for the left mouse being clicked. Does a bitwise
-        // and and checks if its not equal to all zeros. Just
-        // checking if the bitwise of 8000 is not all zeroes is probably
-        // fastest and less architecture dependent.
-        // The same is true for all others.
-        if ((GetKeyState(VK_LBUTTON) & 0x8000) > 0)
-        {
-            clicked = true;
-        }
-        // Enter/Return
-        else if ((GetKeyState(VK_RETURN) & 0x8000) > 0)
-        {
-            keyPressed = 'e';
-        }
-        else if ((GetKeyState('0') & 0x8000) > 0)
-        {
-            keyPressed = '0';
-        }
-        else if ((GetKeyState('1') & 0x8000) > 0)
-        {
-            keyPressed = '1';
-        }
-        else if ((GetKeyState('2') & 0x8000) > 0)
-        {
-            keyPressed = '2';
-        }
-        else if ((GetKeyState('3') & 0x8000) > 0)
-        {
-            keyPressed = '3';
-        }
-        else if ((GetKeyState('4') & 0x8000) > 0)
-        {
-            keyPressed = '4';
-        }
-        else if ((GetKeyState('5') & 0x8000) > 0)
-        {
-            keyPressed = '5';
-        }
-        else if ((GetKeyState('6') & 0x8000) > 0)
-        {
-            keyPressed = '6';
-        }
-        else if ((GetKeyState('7') & 0x8000) > 0)
-        {
-            keyPressed = '7';
-        }
-        else if ((GetKeyState('8') & 0x8000) > 0)
-        {
-            keyPressed = '8';
-        }
-        else if ((GetKeyState('9') & 0x8000) > 0)
-        {
-            keyPressed = '9';
-        }
-        // Not exact mappings from here down for 
-        // keyPressed char sometimes
-        // Backspace
-        else if ((GetKeyState(VK_BACK) & 0x8000) > 0)
-        {
-            keyPressed = 'b';
-        }
-        // Shift + Buttons
-        else if ((GetKeyState(VK_SHIFT) & 0x8000) > 0)
-        {
-            // - key
-            if ((GetKeyState(VK_OEM_MINUS) & 0x8000) > 0)
+            // 0x8000 and 0x10000 are the values for 32 and 64 bit machines
+            // for the left mouse being clicked. Does a bitwise
+            // and and checks if its not equal to all zeros. Just
+            // checking if the bitwise of 8000 is not all zeroes is probably
+            // fastest and less architecture dependent.
+            // The same is true for all others.
+            // There are better ways to normally get keyboard input than this,
+            // however most don't work if the window is not the active
+            // Window.
+            if ((GetKeyState(VK_LBUTTON) & 0x8000) > 0)
             {
-                keyPressed = 'q';
+                // We don't want the keys/mouse UI options
+                // to be spammed with events from being
+                // held down, so we move between multiple
+                // states to ensure it only gets a message once.
+                if (mouseDown == false)
+                {
+                    mouseDown = true;
+                    clicked = true;
+                }
+                else
+                {
+                    clicked = false;
+                }
             }
-            // = key
-            else if ((GetKeyState(VK_OEM_PLUS) & 0x8000) > 0)
+            else
             {
-                keyPressed = 'w';
+                clicked = false;
+                mouseDown = false;
             }
-            // ] Key
-            else if ((GetKeyState(VK_OEM_6) & 0x8000) > 0)
+            // Enter/Return
+            if ((GetKeyState(VK_RETURN) & 0x8000) > 0)
             {
-                keyPressed = 'u';
+                if (keyDown == false)
+                {
+                    keyPressed = 'e';
+                    keyDown = true;
+                }
             }
-        }
-        // Control + Buttons
-        else if ((GetKeyState(VK_CONTROL) & 0x8000) > 0)
-        {
-            // - key
-            if ((GetKeyState(VK_OEM_MINUS) & 0x8000) > 0)
+            else if ((GetKeyState('0') & 0x8000) > 0)
             {
-                keyPressed = 'r';
-            }
-            // = key
-            else if ((GetKeyState(VK_OEM_PLUS) & 0x8000) > 0)
-            {
-                keyPressed = 't';
-            }
-            // ] Key
-            else if ((GetKeyState(VK_OEM_6) & 0x8000) > 0)
-            {
-                keyPressed = 'y';
-            }
-        }
 
-        Sleep(0.01);
+                if (keyDown == false)
+                {
+                    keyPressed = '0';
+                    keyDown = true;
+                }
+            }
+            else if ((GetKeyState('1') & 0x8000) > 0)
+            {
+                if (keyDown == false)
+                {
+                    keyPressed = '1';
+                    keyDown = true;
+                }
+            }
+            else if ((GetKeyState('2') & 0x8000) > 0)
+            {
+                if (keyDown == false)
+                {
+                    keyPressed = '2';
+                    keyDown = true;
+                }
+            }
+            else if ((GetKeyState('3') & 0x8000) > 0)
+            {
+                if (keyDown == false)
+                {
+                    keyPressed = '3';
+                    keyDown = true;
+                }
+            }
+            else if ((GetKeyState('4') & 0x8000) > 0)
+            {
+                if (keyDown == false)
+                {
+                    keyPressed = '4';
+                    keyDown = true;
+                }
+            }
+            else if ((GetKeyState('5') & 0x8000) > 0)
+            {
+                if (keyDown == false)
+                {
+                    keyPressed = '5';
+                    keyDown = true;
+                }
+            }
+            else if ((GetKeyState('6') & 0x8000) > 0)
+            {
+                if (keyDown == false)
+                {
+                    keyPressed = '6';
+                    keyDown = true;
+                }
+            }
+            else if ((GetKeyState('7') & 0x8000) > 0)
+            {
+                if (keyDown == false)
+                {
+                    keyPressed = '7';
+                    keyDown = true;
+                }
+            }
+            else if ((GetKeyState('8') & 0x8000) > 0)
+            {
+                if (keyDown == false)
+                {
+                    keyPressed = '8';
+                    keyDown = true;
+                }
+            }
+            else if ((GetKeyState('9') & 0x8000) > 0)
+            {
+                if (keyDown == false)
+                {
+                    keyPressed = '9';
+                    keyDown = true;
+                }
+            }
+            // Not exact mappings from here down for 
+            // keyPressed char sometimes
+            // Backspace
+            else if ((GetKeyState(VK_BACK) & 0x8000) > 0)
+            {
+                if (keyDown == false)
+                {
+                    keyPressed = 'b';
+                    keyDown = true;
+                }
+            }
+            // Shift + Buttons
+            else if ((GetKeyState(VK_SHIFT) & 0x8000) > 0)
+            {
+                // - key
+                if ((GetKeyState(VK_OEM_MINUS) & 0x8000) > 0)
+                {
+                    if (keyDown == false)
+                    {
+                        keyPressed = '1';
+                        keyDown = true;
+                    }
+                }
+                // = key
+                else if ((GetKeyState(VK_OEM_PLUS) & 0x8000) > 0)
+                {
+                    if (keyDown == false)
+                    {
+                        keyPressed = 'w';
+                        keyDown = true;
+                    }
+                }
+                // ] Key
+                else if ((GetKeyState(VK_OEM_6) & 0x8000) > 0)
+                {
+                    if (keyDown == false)
+                    {
+                        keyPressed = 'u';
+                        keyDown = true;
+                    }
+                }
+            }
+            // Control + Buttons
+            else if ((GetKeyState(VK_CONTROL) & 0x8000) > 0)
+            {
+                // - key
+                if ((GetKeyState(VK_OEM_MINUS) & 0x8000) > 0)
+                {
+                    if (keyDown == false)
+                    {
+                        keyPressed = 'r';
+                        keyDown = true;
+                    }
+                }
+                // = key
+                else if ((GetKeyState(VK_OEM_PLUS) & 0x8000) > 0)
+                {
+                    if (keyDown == false)
+                    {
+                        keyPressed = 't';
+                        keyDown = true;
+                    }
+                }
+                // ] Key
+                else if ((GetKeyState(VK_OEM_6) & 0x8000) > 0)
+                {
+                    if (keyDown == false)
+                    {
+                        keyPressed = 'y';
+                        keyDown = true;
+                    }
+                }
+            }
+            else
+            {
+                keyDown = false;
+            }
+        }
+        Sleep(0.1);
     }
 }
 
@@ -479,12 +580,15 @@ LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
         outputStreamDrop.appendItem("Vertical Stretch");
         // Bottom Left Logo Label
         logoLabel.setText("Labyrinth");
-        logoLabel.setCoords(0.0, 0.9, 0.15, 1.0);
+        logoLabel.setCoords(0.02, 0.91, 0.22, 0.99);
+        // Logo
+        imageTest = Image_Output(m, uMsg, wParam, lParam);
+        imageTest.setCoords(0.03, 0.93, 0.07, 0.97);
+        imageTest.setText("");
 
         // Translation Stream
         translationList = new TranslationStreamList(
             screenWindow, uMsg, wParam, lParam);
-
 
         //
         // End initializing UI Elements
@@ -655,7 +759,7 @@ LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
                 else if (tempInt == 2)
                 {
                     // Pass new image output object to be taken by list.
-                    Solid_Output* passImage = new Solid_Output(
+                    Image_Output* passImage = new Image_Output(
                         m, uMsg, wParam, lParam);
                     translationList->setOutStream(*passImage);
                 }
@@ -678,6 +782,7 @@ LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             // Bottom Left Logo Label
             logoLabel.cycleText(0.1, 0.1, 0.1, hr, pRenderTarget);
+            imageTest.cycleText("", hr, pRenderTarget);
             // Order Dependent Section
             // These items are on a section of the layout in which it matters
             // which order they are drawn in to prevent bugs. As such,
@@ -733,6 +838,7 @@ LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             
 
+
             hr = pRenderTarget->EndDraw();
 
             // Make sure to resize objects
@@ -757,8 +863,6 @@ LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
             hdc = BeginPaint(screenWindow, &screenPaintStruct);
             screenRenderTarget->BeginDraw();
             screenRenderTarget->Clear(screenColor);
-            //testOverlay2.cycleRectangle(0.0, 1.0, 1.0, hr, screenRenderTarget);
-            //testOverlay.cycleText("Can you just make this easy for me and show up nice and easy.", hr, screenRenderTarget);
             translationList->cycleStreams(keyPressed, overlayX, overlayY, hr, screenRenderTarget);
 
             // Make sure to resize objects
@@ -785,8 +889,6 @@ LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
             //
 
             // Reset status of controls and check again
-            clicked = false;
-            keyDown = false;
             keyPressed = 'a'; // Arbitrary noninput key
         }
     }
@@ -877,41 +979,12 @@ BOOL MTILUIProgram::Create(
         hWndParent, hMenu, GetModuleHandle(NULL), this
     );
 
-    /*
-    SetLayeredWindowAttributes(
-        m,
-        RGB(0, 0, 0),
-        byte(255),
-        LWA_ALPHA |
-        LWA_COLORKEY
-    );
-    */
     
     MoveWindow(m,
         0, 0,                   // Top Left of screen
         800,    //
         600,
         TRUE);
-    
-    /*
-    SetWindowLong(m, GWL_STYLE, 1);  // Without 1 point border = white rectangle 
-    SetWindowPos(m, 0, 0, 0, 800, 600, SWP_FRAMECHANGED);
-    
-    ShowWindow(m, SW_SHOW);
-    */
-
-
-
-    /*
-    screenWindow = CreateWindowEx(
-        //WS_EX_LAYERED | // Layered Windows
-        //WS_EX_TRANSPARENT | // Don't hittest this window
-        //WS_EX_TOPMOST | WS_EX_TOOLWINDOW
-        dwExStyle,
-        L"MTIL Layer", L"MTIL Layer", WS_POPUP | WS_VISIBLE, 0,
-        0, 800, 600, m, hMenu, GetModuleHandle(NULL), this
-    );*/
-
 
     // Get the identifier for the whole screen
     systemContext = GetDC(NULL);
@@ -928,10 +1001,6 @@ BOOL MTILUIProgram::Create(
     int rightFactor = 1;
     int upFactor = 4;
     int downFactor = 2;
-
-    
-    //border = 0;
-
 
     screenWindow = CreateWindowEx(
         WS_EX_LAYERED | // Layered Windows
@@ -957,7 +1026,7 @@ BOOL MTILUIProgram::Create(
         // All pixels of the below color will become transparent
         // on the overlay window.
         RGB(0, 0, 0),
-        byte(200),
+        byte(250),
         LWA_ALPHA |
         LWA_COLORKEY
     );
@@ -1025,44 +1094,28 @@ void MTILUIProgram::runMTIL()
         // Update the mouse coordinate tracker for the overlay
         // since the other tracker only handles for the window
         GetCursorPos(&overlayMouseCoords);
-        //std::cout << "Overlay: " << overlayMouseCoords.x << " " << overlayMouseCoords.y << std::endl;
         ScreenToClient(screenWindow, &overlayMouseCoords);
-        //std::cout << "Screen: " << overlayMouseCoords.x << " " << overlayMouseCoords.y << std::endl;
 
         overlayX = double(overlayMouseCoords.x) / overlayWidth;
         overlayY = double(overlayMouseCoords.y) / overlayHeight;
 
-        //std::cout << "Adjusted: " << overlayX << " " << overlayY << std::endl;
-
-        // Update application icon
-        //DrawIcon(hdc, 10, 20, wc.hIcon);
-
-
+        // Handle application messages and process a frame
         if (!ProcessMessages())
         {
             running = false;
         }
 
-
-
         // Set the window to ready to draw for the next frame.
         RedrawWindow(m, NULL, NULL, RDW_INTERNALPAINT);
         RedrawWindow(screenWindow, NULL, NULL, RDW_INTERNALPAINT);
 
-
-
-
         PostMessage(m, WM_KEYDOWN, 0u, 0u);
-        // Cap framerate at around 10 fps for performance.
-        Sleep(0.1);
+        waitSync = false;
+        // Cap framerate at around 100 fps for performance.
+        Sleep(0.01);
     }
 
     inOutThread.join();
-}
-
-void MTILUIProgram::resizeAll(int& inX, int& inY)
-{
-    
 }
 
 MTILUIProgram::~MTILUIProgram()

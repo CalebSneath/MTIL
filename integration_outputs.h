@@ -20,18 +20,24 @@
 #include "user_interface_primitives.h"
 
 //////////////////////////////////////////////////////////////////////////////
-//                             Abstract Classes
+//                             Parent Classes
 //////////////////////////////////////////////////////////////////////////////
 
 // Interface class for any Integration_Input class
 
 // Class: Integration_Output
-// Purpose: Interface to demonstrate usage information on 
-//          Integration_Output classes.
-// Usage:   Use updateText to refresh what text is by objects of this class.
-//          Use getText to grab from an object of this class.
-//          Use getTextNoUpdate to grab text from objects of this class 
-//          without checking for updates from the text source.
+// Purpose: Displays text and attempts to find a suitable text color to
+//          display the text on. Also meant to act as a parent class
+//          which all other output classes can inherit from
+// Usage:   Call the nondefault constructor. Afterward, call setCoords
+//          to choose display coordinates. Call cycleText to run,
+//          passing in the texxt to display. Note, sometimes text
+//          shows up in a hard to read color. This is a sign that the 
+//          display settings are causing an application error in reading
+//          pixels in the correct area. Fortunately, this can
+//          be usually fixed by adjusting the overlay offset settings
+//          int the "Output Offset.conf" file.
+// Inheritance Information: Set RectangleShape for more usage info.
 class Integration_Output: public TextBox
 {
     public:
@@ -50,8 +56,9 @@ class Integration_Output: public TextBox
 //////////////////////////////////////////////////////////////////////////////
 
 // Class: Horizontal_Output
-// Purpose: A class to grab the left and right of the display area and
+// Purpose: A class to grab the top of the display area and
 // stretch it across before displaying text.
+// Inheritance information: See Integration_Output for usage.
 class Horizontal_Output: public Integration_Output
 {
     public:
@@ -63,6 +70,10 @@ class Horizontal_Output: public Integration_Output
 
 };
 
+// Class: Horizontal_Output
+// Purpose: A class to grab the left of the display area and
+// stretch it across before displaying text.
+// Inheritance information: See Integration_Output for usage.
 class Vertical_Output : public Integration_Output
 {
     public:
@@ -73,15 +84,40 @@ class Vertical_Output : public Integration_Output
             HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget);
 };
 
+// Class: Image_Output
+// Purpose: A class to grab an image and display it as a background
+// for some text.
+// Usage Information: Only nine streams can usefully exist
+// at once. Objects scroll through a list of names formatted 
+// as "MTILFileX.png" where X ranges from 1 to 8. File two
+// is "Labyrinth.png" and can be used to show the program logo.
+// Note: It is fine to change file extensions. The program
+// doesn't actually use them (outside of as a file address).
+// Most common formats should work fine with the program
+// after being renamed to X.png. Also, file names
+// are chosen in order of creation down the list.
+// Inheritance information: See Integration_Output for usage.
 class Image_Output : public Integration_Output
 {
     public:
+        Image_Output();// Mandatory
+        Image_Output(HWND inHandle, UINT inMessage, WPARAM inWParam,
+            LPARAM inLongParam);
         // The parent constructor is fine to inherit.
-        using Integration_Output::Integration_Output;
         void cycleText(std::string inText,
             HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget);
+        ~Image_Output() { files[index] = false; }
+    protected:
+        static bool files[9];
+        static std::string names[9];
+        std::string fileName;
+        int index = 0;
 };
 
+// Class: Horizontal_Output
+// Purpose: A class to grab a pixel near the display
+// area and color its background as such.
+// Inheritance information: See Integration_Output for usage.
 class Solid_Output : public Integration_Output
 {
     public:

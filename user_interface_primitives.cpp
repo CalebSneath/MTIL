@@ -79,6 +79,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 // Circle
+
 Circle::Circle()
 {
     // Only exists to be replaced by calling below constructor.
@@ -97,11 +98,6 @@ void Circle::setCoords(float inX, float inY, float inRad)
     centerY = inY;
     radius = inRad;
 }
-void Circle::setScale(int inWidth, int inHeight)
-{
-    xScale = inWidth;
-    yScale = inHeight;
-}
 void Circle::cycleCircle(float rValue, float gValue, float bValue, HRESULT& hr,
     ID2D1HwndRenderTarget*& pRenderTarget)
 {
@@ -112,10 +108,24 @@ void Circle::cycleCircle(float rValue, float gValue, float bValue, HRESULT& hr,
     const D2D1_COLOR_F color = D2D1::ColorF(rValue, gValue, bValue);
     hr = pRenderTarget->CreateSolidColorBrush(color, &pBrush);
 
+    // Grab sizes to know where to draw
     D2D1_SIZE_F size = pRenderTarget->GetSize();
     const float x = size.width * centerX;
     const float y = size.height * centerY;
+    ///////
+    // This is actually a bug. Don't fix it.
+    // It results in Circle objects getting scaled
+    // up the closer to the bottom right of the screen.
+    // It should take the minimum of size.width and
+    // size.height instead of the absolute x and y
+    // coordinates to get the radius. In a 
+    // program that may reuse this code it 
+    // should be fixed, but the buttons' radius scale
+    // have already been placed and manually adjusted
+    // to offset this cause was discovered, so
+    // it's more harm than its worth.
     const float adjustedRadius = min(x, y) * radius;
+    ///////
     ellipse = D2D1::Ellipse(D2D1::Point2F(x, y),
         adjustedRadius, adjustedRadius);
 
@@ -157,14 +167,6 @@ void RectangleShape::setCoords(float inTopX, float inTopY, float inBottomX, floa
         bottomY = inBottomY;
     }
 }
-// TODO: Maybe a shape class would have been better if this is copied
-//       It's just one function though, probably not worth an extra
-//       parent and changing plans. Discuss later.
-void RectangleShape::setScale(int inWidth, int inHeight)
-{
-    xScale = inWidth;
-    yScale = inHeight;
-}
 void RectangleShape::cycleRectangle(float rValue, float gValue, float bValue,
     HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget)
 {
@@ -178,6 +180,7 @@ void RectangleShape::cycleRectangle(float rValue, float gValue, float bValue,
     }
 
     hr = S_OK;
+    // Calculate code for drawing
     D2D1_SIZE_F size = pRenderTarget->GetSize();
     const float adjustedTopX = size.width * topX;
     const float adjustedTopY = size.height * topY;
@@ -357,13 +360,11 @@ void TextBox::cycleText(float rValue, float gValue, float bValue,
     D2D1_RECT_F thisRect;
     RECT rc;
     GetClientRect(hWnd, &rc);
-    // Retrieve the size of the render target.
     D2D1_SIZE_F renderTargetSize = pRenderTarget->GetSize();
     hr = S_OK;
     const int localWidth = rc.right - rc.left;
     const int localHeight = rc.bottom - rc.top;
     D2D1_SIZE_U intSize = D2D1::SizeU(localWidth, localHeight);
-    hr = S_OK;
     D2D1_SIZE_F size = pRenderTarget->GetSize();
     const float adjustedTopX = size.width * topX;
     const float adjustedTopY = size.height * topY;
@@ -371,9 +372,6 @@ void TextBox::cycleText(float rValue, float gValue, float bValue,
     const float adjustedBottomY = size.height * bottomY;
     thisRect = D2D1::RectF(adjustedTopX, adjustedTopY,
         adjustedBottomX, adjustedBottomY);
-
-
-
 
     // Convert to WCHAR and attempt to find a good font size
     int arraySize = text.size();
@@ -395,7 +393,6 @@ void TextBox::cycleText(float rValue, float gValue, float bValue,
     const FLOAT msc_fontSize = max((0.75 * log2(digitalSquareInch *
         (adjustedBottomY - adjustedTopY) * (adjustedBottomX - adjustedTopX) *
         fontPoint / (arraySize))), 8);
-
 
     // Create factories on first object function call.
     // For details see:
@@ -424,7 +421,8 @@ void TextBox::cycleText(float rValue, float gValue, float bValue,
 
 
         textBoxTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-        textBoxTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+        textBoxTextFormat->SetParagraphAlignment(
+            DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
     }
 
     if (!pRenderTarget)
@@ -439,7 +437,6 @@ void TextBox::cycleText(float rValue, float gValue, float bValue,
             &pRenderTarget);
     }
 
-
     // Actually draw the text
     if (pRenderTarget != nullptr)
     {
@@ -448,17 +445,13 @@ void TextBox::cycleText(float rValue, float gValue, float bValue,
         hr = pRenderTarget->CreateSolidColorBrush(
             thisColor, &textBoxBrush);
 
-
         pRenderTarget->DrawText(
             convertedText,
             arraySize,
             textBoxTextFormat,
             thisRect,
-            textBoxBrush
-        );
-
+            textBoxBrush);
     }
-
 
     // Free device resources
     if (FAILED(hr))
@@ -475,7 +468,6 @@ void TextBox::cycleText(float rValue, float gValue, float bValue,
             textBoxBrush = NULL;
         }
     }
-
 }
 
 // TextEnterInt
@@ -530,8 +522,16 @@ int TextEnterInt::cycleBox(char inputKey, int inX, int inY, bool inClicked,
         cycleRectangle(0.75, 0.75, 0.78, hr, pRenderTarget);
         if (active == true)
         {
-            processKey(stringKey);
-
+            // Deactivate if the user clicks off.
+            if (inClicked == true)
+            {
+                buffer = text;
+                active = false;
+            }
+            else
+            {
+                processKey(stringKey);
+            }
         }
     }
 

@@ -38,6 +38,23 @@
 //                             Normal Classes
 //////////////////////////////////////////////////////////////////////////////
 
+// Class:   TranslationStreamList
+// Purpose: A class which can hold pointers to translation input and output
+//          streams and manage their lifetimes and use.
+// Usage:   Use the nondefault constructor to intitialize the stream.
+//          A bunch of streams will be created and added to the list
+//          as placeholders, but none will be activated.
+//          Pass an input or output stream with the setIn/OutStream 
+//          functions to activate. It can hold and manage eight pairs of
+//          streams total. Most functions that do not take an
+//          explicit stream parameter perform their function on the "focused"
+//          index's stream instead, so calling setFocus before calling a
+//          function for a stream is usually required, and will 
+//          remain until changed. Do not delete objects passed to
+//          the setIn/OutStreams as their lifetimes are managed
+//          by the list instead. Note, the list uses the input char, 
+//          '`' internally to signify no character, so do not pass it or
+//          else it can cause unexpected behavior.
 class TranslationStreamList
 {
 public:
@@ -72,6 +89,16 @@ private:
     LPARAM lParam;
 };
 
+// Class:   MTILUIProgram
+// Purpose: A class which creates a functioning GUI window
+//          as well as a usually invisible and unobtrusive overlay
+//          window. In tandem with the GUI, this class
+//          allows the user to set display streams for input streams,
+//          overlaying text and occasionally rectangles with the users'
+//          desired text.
+// Usage:   Use the default constructor and runMTILUIProgram. The class
+//          handles all setup from their. For usage information on
+//          the program itself, see the GitHub project readme.
 class MTILUIProgram
 {
     public:
@@ -126,12 +153,12 @@ class MTILUIProgram
         HWND m;
         char keyPressed = 'a';
         bool keyDown = false;
+        bool mouseDown = false;
         int mouseX;
         int mouseY;
         bool clicked;
+        bool waitSync = false;
         LPARAM programLongParam;
-        void resizeAll(int &inX, int &inY);
-        // Any internal implementation details
 
         // Screen Overlay Window Variables
         RECT screenRect;
@@ -175,6 +202,9 @@ class MTILUIProgram
 
         // Translation Stream List Object
         TranslationStreamList* translationList;
+
+        // Logo
+        Image_Output imageTest;
 };
 
 
