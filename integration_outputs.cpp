@@ -18,6 +18,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <thread>
 
 // Windows Version
 #define WINDOWSRELEASE
@@ -91,18 +92,11 @@ Integration_Output::Integration_Output()
         // Read and skip the label to grab X Offset
         std::string readString;
         confFile >> readString >> readString >> readString;
-        if (std::isdigit((unsigned char)readString[0]))
-        {
-            xOffset = stoi(readString);
-        }
-
+        xOffset = stoi(readString);
 
         // Read and skip the label to grab Y Offset
         confFile >> readString >> readString >> readString;
-        if (std::isdigit((unsigned char)readString[0]))
-        {
-            yOffset = stoi(readString);
-        }
+        yOffset = stoi(readString);
     }
 }
 Integration_Output::Integration_Output(HWND inHandle, UINT inMessage, 
@@ -121,18 +115,11 @@ Integration_Output::Integration_Output(HWND inHandle, UINT inMessage,
         // Read and skip the label to grab X Offset
         std::string readString;
         confFile >> readString >> readString >> readString;
-        if (std::isdigit((unsigned char)readString[0]))
-        {
-            xOffset = stoi(readString);
-        }
-
+        xOffset = stoi(readString);
 
         // Read and skip the label to grab Y Offset
         confFile >> readString >> readString >> readString;
-        if (std::isdigit((unsigned char)readString[0]))
-        {
-            yOffset = stoi(readString);
-        }
+        yOffset = stoi(readString);
     }
 }
 
@@ -167,13 +154,24 @@ void Integration_Output::cycleText(std::string inText,
     // Actually draw the text
     if (pRenderTarget != nullptr)
     {
+        POINT overlayAdjustCoords;
+        // Grab the middle pixel of the overlay
+        overlayAdjustCoords.x = adjustedTopX + 
+            ((adjustedBottomX - adjustedTopX) / 2) + xOffset;
+        overlayAdjustCoords.y = adjustedTopY + 
+            ((adjustedBottomY - adjustedTopY) / 2) + yOffset;
+
+        // Overlay isn't a 1:1 conversion of screen pixels, so
+        // we now must adjust if we want to grab the actual
+        // pixel color
+        ScreenToClient(hWnd, &overlayAdjustCoords);
+
         // Try to find a good color for the text taking into 
         // account the color of the area
         // it will be displayed in, by looking at the center pixel.
         HDC surfaceContext = GetDC(NULL);
         COLORREF pixelColor = GetPixel(surfaceContext, 
-            adjustedTopX + ((adjustedBottomX - adjustedTopX) / 2) + xOffset, 
-            adjustedTopY + ((adjustedBottomY - adjustedTopY) / 2) + yOffset);
+            overlayAdjustCoords.x, overlayAdjustCoords.y);
         ReleaseDC(NULL, surfaceContext);
 
         // Color is scaled either 0-255 bits or floating 0-1.
@@ -206,17 +204,24 @@ Horizontal_Output::Horizontal_Output()
         // Read and skip the label to grab X Offset
         std::string readString;
         confFile >> readString >> readString >> readString;
-        if (std::isdigit((unsigned char)readString[0]))
-        {
-            xOffset = stoi(readString);
-        }
-
+        xOffset = stoi(readString);
 
         // Read and skip the label to grab Y Offset
         confFile >> readString >> readString >> readString;
+        yOffset = stoi(readString);
+
+        // Read and skip the label to grab pixel precision
+        confFile >> readString >> readString >> readString;
         if (std::isdigit((unsigned char)readString[0]))
         {
-            yOffset = stoi(readString);
+            pixelScale = stoi(readString);
+        }
+
+        // Read and skip the label to grab polling scale
+        confFile >> readString >> readString >> readString >> readString;
+        if (std::isdigit((unsigned char)readString[0]))
+        {
+            waitScale = stof(readString);
         }
     }
 }
@@ -231,17 +236,24 @@ Horizontal_Output::Horizontal_Output(HWND inHandle, UINT inMessage,
         // Read and skip the label to grab X Offset
         std::string readString;
         confFile >> readString >> readString >> readString;
-        if (std::isdigit((unsigned char)readString[0]))
-        {
-            xOffset = stoi(readString);
-        }
-
+        xOffset = stoi(readString);
 
         // Read and skip the label to grab Y Offset
         confFile >> readString >> readString >> readString;
+        yOffset = stoi(readString);
+
+        // Read and skip the label to grab pixel precision
+        confFile >> readString >> readString >> readString;
         if (std::isdigit((unsigned char)readString[0]))
         {
-            yOffset = stoi(readString);
+            pixelScale = stoi(readString);
+        }
+
+        // Read and skip the label to grab polling scale
+        confFile >> readString >> readString >> readString >> readString;
+        if (std::isdigit((unsigned char)readString[0]))
+        {
+            waitScale = stof(readString);
         }
     }
 
@@ -259,51 +271,143 @@ void Horizontal_Output::cycleText(std::string inText,
         return;
     }
 
-    // Calculate boundaries
+    heldRenderTarget = pRenderTarget;
+
+    // Calculate rectangle boundaries
     D2D1_RECT_F thisRect;
-    RECT rc;
-    GetClientRect(hWnd, &rc);
-    // Retrieve the size of the render target.
-    D2D1_SIZE_F renderTargetSize = pRenderTarget->GetSize();
-    hr = S_OK;
-    const int localWidth = rc.right - rc.left;
-    const int localHeight = rc.bottom - rc.top;
-    const float adjustedTopX = renderTargetSize.width * topX; // Border
-    const float adjustedTopY = renderTargetSize.height * topY; // Border
-    const float adjustedBottomX = renderTargetSize.width * bottomX;
-    const float adjustedBottomY = renderTargetSize.height * bottomY;
-    thisRect = D2D1::RectF(adjustedTopX, adjustedTopY,
-        adjustedBottomX, adjustedBottomY);
+
+    ID2D1SolidColorBrush* pBrush = NULL;
+
+    // Pixel polling is pretty inefficient until it is further optimized
+    // so we want it to wait and do it only every few seconds rather
+    // than once a frame.
+    if (refreshThreadCalled == false)
+    {
+        refreshThreadCalled = true;
+
+        refreshPollThread = std::thread(&Horizontal_Output::handlePixelPolling,
+            this);
+
+        pollingDone = true;
+
+    }
+    // Avoid timing issues
+    while (pollingDone == false)
+    {
+        // Wait until one cycle of polling to move on
+    }
+    drawingDone = false;
 
 
-    static ID2D1SolidColorBrush* pBrush = NULL;
-
-    HDC surfaceContext = GetDC(NULL);
     // Iterate through a row of pixels, drawing a matching color
     // rectangle down to the boundary
-    for (int edgePixel = adjustedTopX; edgePixel <= adjustedBottomX + 15
-        ; edgePixel += 15)
+    int edgePixel = adjustedTopX;
+    for (int index = 0; index < pixelColorList.size()
+        ; index++)
     {
-        // Grab some color information to know how to output
-        COLORREF pixelColor = GetPixel(surfaceContext, edgePixel + xOffset, 
-            adjustedTopY + yOffset);
-
-        BYTE rValue = GetRValue(pixelColor);
-        BYTE gValue = GetGValue(pixelColor);
-        BYTE bValue = GetBValue(pixelColor);
-        thisRect = D2D1::RectF(edgePixel, adjustedTopY,
-            edgePixel + 15, adjustedBottomY);
-        D2D1_COLOR_F color = D2D1::ColorF(float(rValue) / 255, 
-            float(gValue) / 255, float(bValue) / 255);
-        hr = pRenderTarget->CreateSolidColorBrush(color, &pBrush);
-        if (SUCCEEDED(hr))
+        // Early exit to avoid errors if no display and we still
+        // made it here somehow due to thread
+        if (pixelColorList.size() == 0)
         {
-            pRenderTarget->FillRectangle(thisRect, pBrush);
+            return;
         }
+
+        hr = pRenderTarget->CreateSolidColorBrush(
+            pixelColorList[index], &pBrush);
+
+        thisRect = D2D1::RectF(edgePixel, adjustedTopY,
+            edgePixel + pixelScale, adjustedBottomY);
+        pRenderTarget->FillRectangle(thisRect, pBrush);
+
+        // Release resources
+        (*&pBrush)->Release();
+        pBrush = nullptr;
+
+        edgePixel += pixelScale; //Increment edge pixels
     }
-    ReleaseDC(NULL, surfaceContext);
+    // Let thread continue if locked
+    drawingDone = true;
 
     Integration_Output::cycleText(inText, hr, pRenderTarget);
+}
+void Horizontal_Output::handlePixelPolling()
+{
+    while (refreshThreadCalled == true)
+    {
+        while (drawingDone == false)
+        {
+            // Wait until polling is done so we don't delete a vector
+            // in use and cause a memory out of bounds error.
+        }
+        pollingDone = false;
+
+        // Calculate rectangle boundaries
+        D2D1_RECT_F thisRect;
+        RECT rc;
+        GetClientRect(hWnd, &rc);
+        // Retrieve the size of the render target.
+        D2D1_SIZE_F renderTargetSize = heldRenderTarget->GetSize();
+        const int localWidth = rc.right - rc.left;
+        const int localHeight = rc.bottom - rc.top;
+        adjustedTopX = renderTargetSize.width * topX; // Border
+        adjustedTopY = renderTargetSize.height * topY; // Border
+        adjustedBottomX = renderTargetSize.width * bottomX;
+        adjustedBottomY = renderTargetSize.height * bottomY;
+        thisRect = D2D1::RectF(adjustedTopX, adjustedTopY,
+            adjustedBottomX, adjustedBottomY);
+
+        // Empty color list
+        pixelColorList.clear();
+
+        // Iterate through a row of pixels, grabbing a matching color
+        // rectangle down to the boundary
+        // Potential Optimizations: Grab screen area as bitmap all at once
+        // and manipulate the bitmap. This is possibly better, although
+        // no dev has experience dong as such beyond opening files.
+        for (int edgePixel = adjustedTopX; edgePixel <= adjustedBottomX + pixelScale
+            ; edgePixel += pixelScale)
+        {
+            POINT overlayAdjustCoords;
+            overlayAdjustCoords.x = edgePixel;
+            overlayAdjustCoords.y = adjustedTopY;
+            ScreenToClient(hWnd, &overlayAdjustCoords);
+            COLORREF unConvertedColor;
+
+            // Grab some color information to know how to output
+            HDC surfaceContext = GetDC(NULL);
+            unConvertedColor = GetPixel(surfaceContext,
+                overlayAdjustCoords.x + xOffset, 
+                overlayAdjustCoords.y + yOffset);
+            ReleaseDC(NULL, surfaceContext);
+
+            BYTE rValue = GetRValue(unConvertedColor);
+            BYTE gValue = GetGValue(unConvertedColor);
+            BYTE bValue = GetBValue(unConvertedColor);
+
+            // Convert some color values to the right format 
+            // (0-255 scale to 0-1.0 scale)
+            pixelColorList.push_back(D2D1::ColorF(float(rValue) / 255,
+                float(gValue) / 255, float(bValue) / 255));
+        }
+
+        pollingDone = true;
+        // Only poll occasionally.
+        Sleep(waitScale);
+    }
+    threadDone = true;
+}
+Horizontal_Output::~Horizontal_Output()
+{
+    // Ensure refresh thread ends
+    if (refreshThreadCalled == true)
+    {
+        refreshThreadCalled = false;
+        while (!threadDone)
+        {
+            // Wait until thread ends
+        }
+        refreshPollThread.join();
+    }
 }
 
 // Vertical_Output
@@ -319,17 +423,24 @@ Vertical_Output::Vertical_Output()
         // Read and skip the label to grab X Offset
         std::string readString;
         confFile >> readString >> readString >> readString;
-        if (std::isdigit((unsigned char)readString[0]))
-        {
-            xOffset = stoi(readString);
-        }
-        
+        xOffset = stoi(readString);
 
         // Read and skip the label to grab Y Offset
         confFile >> readString >> readString >> readString;
+        yOffset = stoi(readString);
+
+        // Read and skip the label to grab pixel precision
+        confFile >> readString >> readString >> readString;
         if (std::isdigit((unsigned char)readString[0]))
         {
-            yOffset = stoi(readString);
+            pixelScale = stoi(readString);
+        }
+
+        // Read and skip the label to grab polling scale
+        confFile >> readString >> readString >> readString >> readString;
+        if (std::isdigit((unsigned char)readString[0]))
+        {
+            waitScale = stof(readString);
         }
     }
 }
@@ -344,17 +455,24 @@ Vertical_Output::Vertical_Output(HWND inHandle, UINT inMessage,
         // Read and skip the label to grab X Offset
         std::string readString;
         confFile >> readString >> readString >> readString;
-        if (std::isdigit((unsigned char)readString[0]))
-        {
-            xOffset = stoi(readString);
-        }
-
+        xOffset = stoi(readString);
 
         // Read and skip the label to grab Y Offset
         confFile >> readString >> readString >> readString;
+        yOffset = stoi(readString);
+
+        // Read and skip the label to grab pixel precision
+        confFile >> readString >> readString >> readString;
         if (std::isdigit((unsigned char)readString[0]))
         {
-            yOffset = stoi(readString);
+            pixelScale = stoi(readString);
+        }
+
+        // Read and skip the label to grab polling scale
+        confFile >> readString >> readString >> readString >> readString;
+        if (std::isdigit((unsigned char)readString[0]))
+        {
+            waitScale = stof(readString);
         }
     }
 
@@ -372,62 +490,140 @@ void Vertical_Output::cycleText(std::string inText,
         return;
     }
 
+    heldRenderTarget = pRenderTarget;
+
     // Calculate rectangle boundaries
     D2D1_RECT_F thisRect;
-    RECT rc;
-    GetClientRect(hWnd, &rc);
-    // Retrieve the size of the render target.
-    D2D1_SIZE_F renderTargetSize = pRenderTarget->GetSize();
-    hr = S_OK;
-    const int localWidth = rc.right - rc.left;
-    const int localHeight = rc.bottom - rc.top;
-    const float adjustedTopX = renderTargetSize.width * topX; // Border
-    const float adjustedTopY = renderTargetSize.height * topY; // Border
-    const float adjustedBottomX = renderTargetSize.width * bottomX;
-    const float adjustedBottomY = renderTargetSize.height * bottomY;
-    thisRect = D2D1::RectF(adjustedTopX, adjustedTopY,
-        adjustedBottomX, adjustedBottomY);
 
+    ID2D1SolidColorBrush* pBrush = NULL;
 
-    static ID2D1SolidColorBrush* pBrush = NULL;
+    // Pixel polling is pretty inefficient until it is further optimized
+    // so we want it to wait and do it only every few seconds rather
+    // than once a frame.
+    if (refreshThreadCalled == false) 
+    {
+        refreshThreadCalled = true;
+        
+        refreshPollThread = std::thread(&Vertical_Output::handlePixelPolling,
+            this);
+        
+        pollingDone = true;
 
-    HDC surfaceContext;
+    }
+    // Avoid timing issues
+    while (pollingDone == false)
+    {
+        // Wait until one cycle of polling to move on
+    }
+    drawingDone = false;
+
     // Iterate through a row of pixels, drawing a matching color
     // rectangle down to the boundary
-    // Potential Optimizations: Grab screen area as bitmap all at once
-    // and manipulate the bitmap. This is possibly better, although
-    // no dev has experience dong as such beyond opening files.
-    // Alternatively, using a thread to fire off a sleep function
-    // and only readjust pixels every few seconds rather than X
-    // times per second.
-    for (int edgePixel = adjustedTopY; edgePixel <= adjustedBottomY + 15
-        ; edgePixel += 15)
+    int edgePixel = adjustedTopY;
+    for (int index = 0; index < pixelColorList.size(); index++)
     {
-        // Grab some color information to know how to output
-        surfaceContext = GetDC(NULL);
-        COLORREF pixelColor = GetPixel(surfaceContext, 
-            adjustedTopX + xOffset, edgePixel + yOffset);
-        ReleaseDC(NULL, surfaceContext);
-
-
-        BYTE rValue = GetRValue(pixelColor);
-        BYTE gValue = GetGValue(pixelColor);
-        BYTE bValue = GetBValue(pixelColor);
-        thisRect = D2D1::RectF(adjustedTopX, edgePixel, 
-            adjustedBottomX, edgePixel + 15);
-
-        // Convert some color values to the right format 
-        // (0-255 scale to 0-1.0 scale)
-        D2D1_COLOR_F color = D2D1::ColorF(float(rValue) / 255, 
-            float(gValue) / 255, float(bValue) / 255);
-        hr = pRenderTarget->CreateSolidColorBrush(color, &pBrush);
-        if (SUCCEEDED(hr))
+        // Early exit to avoid errors if no display and we still
+        // made it here somehow due to thread
+        if (pixelColorList.size() == 0)
         {
-            pRenderTarget->FillRectangle(thisRect, pBrush);
+            return;
         }
+
+        thisRect = D2D1::RectF(adjustedTopX, edgePixel, 
+            adjustedBottomX, edgePixel + pixelScale);
+        pRenderTarget->CreateSolidColorBrush(
+            pixelColorList[index], &pBrush);
+        pRenderTarget->FillRectangle(thisRect, pBrush);
+
+        // Free resources
+        (*&pBrush)->Release();
+        pBrush = nullptr;
+
+        edgePixel += pixelScale; // Increment edge pixel
     }
+    // Let thread continue if locked
+    drawingDone = true;
 
     Integration_Output::cycleText(inText, hr, pRenderTarget);
+}
+void Vertical_Output::handlePixelPolling()
+{
+    while (refreshThreadCalled == true)
+    {
+        while (drawingDone == false)
+        {
+            // Wait until polling is done so we don't delete a vector
+            // in use and cause a memory out of bounds error.
+        }
+        pollingDone = false;
+
+        // Calculate rectangle boundaries
+        D2D1_RECT_F thisRect;
+        RECT rc;
+        GetClientRect(hWnd, &rc);
+        // Retrieve the size of the render target.
+        D2D1_SIZE_F renderTargetSize = heldRenderTarget->GetSize();
+        const int localWidth = rc.right - rc.left;
+        const int localHeight = rc.bottom - rc.top;
+        adjustedTopX = renderTargetSize.width * topX; // Border
+        adjustedTopY = renderTargetSize.height * topY; // Border
+        adjustedBottomX = renderTargetSize.width * bottomX;
+        adjustedBottomY = renderTargetSize.height * bottomY;
+        thisRect = D2D1::RectF(adjustedTopX, adjustedTopY,
+            adjustedBottomX, adjustedBottomY);
+
+        // Empty color list
+        pixelColorList.clear();
+
+        // Iterate through a row of pixels, grabbing a matching color
+        // rectangle down to the boundary
+        // Potential Optimizations: Grab screen area as bitmap all at once
+        // and manipulate the bitmap. This is possibly better, although
+        // no dev has experience dong as such beyond opening files.
+        for (int edgePixel = adjustedTopY; edgePixel <= adjustedBottomY 
+            + pixelScale; edgePixel += pixelScale)
+        {
+            POINT overlayAdjustCoords;
+            overlayAdjustCoords.x = adjustedTopX;
+            overlayAdjustCoords.y = edgePixel;
+            ScreenToClient(hWnd, &overlayAdjustCoords);
+            COLORREF unConvertedColor;
+
+            // Grab some color information to know how to output
+            HDC surfaceContext = GetDC(NULL);
+            unConvertedColor = GetPixel(surfaceContext, 
+                overlayAdjustCoords.x + xOffset, 
+                overlayAdjustCoords.y + yOffset);
+            ReleaseDC(NULL, surfaceContext);
+
+            BYTE rValue = GetRValue(unConvertedColor);
+            BYTE gValue = GetGValue(unConvertedColor);
+            BYTE bValue = GetBValue(unConvertedColor);
+
+            // Convert some color values to the right format 
+            // (0-255 scale to 0-1.0 scale)
+            pixelColorList.push_back(D2D1::ColorF(float(rValue) / 255,
+                float(gValue) / 255, float(bValue) / 255));
+        }
+
+        pollingDone = true;
+        // Only poll occasionally.
+        Sleep(waitScale);
+    }
+    threadDone = true;
+}
+Vertical_Output::~Vertical_Output()
+{
+    // Ensure refresh thread ends
+    if (refreshThreadCalled == true)
+    {
+        refreshThreadCalled = false;
+        while (!threadDone)
+        {
+            // Wait until thread ends
+        }
+        refreshPollThread.join();
+    }
 }
 
 
@@ -441,6 +637,44 @@ std::string Image_Output::names[9] = { "MTILFILE1.png", "Labyrinth.png",
 Image_Output::Image_Output()
 {
     // Only exists to be replaced by calling below constructor.
+    std::ifstream sourceConfFile;
+    sourceConfFile.open("Image Files.conf");
+
+    int loopIndex = 0;
+    // Guard against crashes
+    if (sourceConfFile.is_open())
+    {
+        // Iterate through file
+        // and load names into array
+        while (sourceConfFile && loopIndex < 9)
+        {
+            std::string holdInput;
+            sourceConfFile >> holdInput >> holdInput >> names[loopIndex];
+
+            // Iterate loop control
+            loopIndex++;
+        }
+
+        // Close file
+        sourceConfFile.close();
+    }
+
+    // ConfFile Corrupted, try making a new one
+    if (loopIndex != 9)
+    {
+        std::ofstream newConfFile;
+        newConfFile.open("Image Files.conf");
+
+        // Iterate through each row
+        for (int newLoopIndex = 0; newLoopIndex < 9; newLoopIndex++)
+        {
+            newConfFile << "Image " << newLoopIndex + 1 << 
+                ": Labyrinth.png" << std::endl;
+        }
+
+        // Close file
+        newConfFile.close();
+    }
 
     // Iterate through the input files
     // Grab the first and mark it as
@@ -479,6 +713,45 @@ Image_Output::Image_Output()
 Image_Output::Image_Output(HWND inHandle, UINT inMessage,
     WPARAM inWParam, LPARAM inLongParam)
 {
+    std::ifstream sourceConfFile;
+    sourceConfFile.open("Image Files.conf");
+
+    int loopIndex = 0;
+    // Guard against crashes
+    if (sourceConfFile.is_open())
+    {
+        // Iterate through file
+        // and load names into array
+        while (sourceConfFile && loopIndex < 9)
+        {
+            std::string holdInput;
+            sourceConfFile >> holdInput >> holdInput >> names[loopIndex];
+
+            // Iterate loop control
+            loopIndex++;
+        }
+
+        // Close file
+        sourceConfFile.close();
+    }
+
+    // ConfFile Corrupted, try making a new one
+    if (loopIndex != 9)
+    {
+        std::ofstream newConfFile;
+        newConfFile.open("Image Files.conf");
+
+        // Iterate through each row
+        for (int newLoopIndex = 0; newLoopIndex < 9; newLoopIndex++)
+        {
+            newConfFile << "Image " << newLoopIndex + 1 <<
+                ": Labyrinth.png" << std::endl;
+        }
+
+        // Close file
+        newConfFile.close();
+    }
+
     hWnd = inHandle;
     uMsg = inMessage;
     wParam = inWParam;
@@ -518,6 +791,7 @@ Image_Output::Image_Output(HWND inHandle, UINT inMessage,
         }
     }
 }
+
 // Credit: Partially made from code obtained here.
 // See:
 // https://docs.microsoft.com/en-us/windows/win32/wic/
@@ -596,7 +870,7 @@ void Image_Output::cycleText(std::string inText,
 
     const int localWidth = rc.right - rc.left;
     const int localHeight = rc.bottom - rc.top;
-    D2D1_SIZE_U size = D2D1::SizeU(localWidth, localHeight);
+    D2D1_SIZE_F size = pRenderTarget->GetSize();
     const float adjustedTopX = size.width * topX; // Border
     const float adjustedTopY = size.height * topY; // Border
     const float adjustedBottomX = size.width * bottomX;
@@ -604,13 +878,25 @@ void Image_Output::cycleText(std::string inText,
     thisRect = D2D1::RectF(adjustedTopX, adjustedTopY,
         adjustedBottomX, adjustedBottomY);
 
+
+
+
+
+    /*
+    // Calculate size for drawing
+    D2D1_SIZE_F windowSize = pRenderTarget->GetSize();
+    const float adjustedTopX = windowSize.width * topX;
+    const float adjustedTopY = windowSize.height * topY;
+    const float adjustedBottomX = windowSize.width * bottomX;
+    const float adjustedBottomY = windowSize.height * bottomY;
+    thisRect = D2D1::RectF(adjustedTopX, adjustedTopY,
+        adjustedBottomX, adjustedBottomY);
+    */
+
     // D2DBitmap may have been released due to device loss. 
     // If so, re-create it from the source bitmap
-    if (m_pConvertedSourceBitmap && !m_pD2DBitmap)
-    {
-        pRenderTarget->CreateBitmapFromWicBitmap(m_pConvertedSourceBitmap, 
+    pRenderTarget->CreateBitmapFromWicBitmap(m_pConvertedSourceBitmap, 
             NULL, &m_pD2DBitmap);
-    }
 
     // Draws an image and scales it to the current window size
     if (m_pD2DBitmap)
@@ -701,9 +987,13 @@ void Solid_Output::cycleText(std::string inText,
         adjustedBottomX, adjustedBottomY);
 
     // Grab some color information to know how to output
+    POINT overlayAdjustCoords;
+    overlayAdjustCoords.x = adjustedTopX + xOffset;
+    overlayAdjustCoords.y = adjustedTopY + yOffset;
+
     HDC surfaceContext = GetDC(NULL);
-    COLORREF pixelColor = GetPixel(surfaceContext, adjustedTopX + xOffset, 
-        adjustedTopY + yOffset);
+    COLORREF pixelColor = GetPixel(surfaceContext, overlayAdjustCoords.x, 
+        overlayAdjustCoords.y);
     BYTE rValue = GetRValue(pixelColor);
     BYTE gValue = GetGValue(pixelColor);
     BYTE bValue = GetBValue(pixelColor);

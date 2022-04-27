@@ -36,6 +36,7 @@ class Integration_Input
         virtual void updateText() = 0;
         virtual std::string getText() = 0;
         std::string getTextNoUpdate() { return inputText; }
+        virtual ~Integration_Input() {}
     protected:
         std::string inputText = "";
 };

@@ -112,6 +112,11 @@ TranslationStreamList::TranslationStreamList(HWND inHandle, UINT inMessage, WPAR
 void TranslationStreamList::cycleStreams(char inputKey, float inX, 
     float inY, HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget)
 {
+    // Clear helper delete threads
+    if (waitingDelete == 0)
+    {
+        clearDeleteThreads();
+    }
 
     // Iterate through list of in/outstreams
     for (int loopIndex = 0; loopIndex < 8; loopIndex++)
@@ -176,13 +181,47 @@ void TranslationStreamList::setInStream(Integration_Input & inS)
     inputsArray[focus] = &inS;
     delete deletePtr;
 }
+void TranslationStreamList::handleOutstreamEnd()
+{
+    Integration_Output* handleOutstreamPointer = deleteOutStream;
+    deleteOutStream = nullptr;
+    delete handleOutstreamPointer;
+    waitingDelete--;
+}
 void TranslationStreamList::setOutStream(Integration_Output & outS)
 {
     // Deallocate dynamic memory and adjust pointer. Activate stream.
     active[focus] = true;
-    Integration_Output* deletePtr = outputsArray[focus];
+
+    // Only handle one delete at a time
+    if (waitingDelete == 0)
+    {
+        clearDeleteThreads();
+    }
+    waitingDelete = true;
+    deleteOutStream = outputsArray[focus];
+
+    // Accept the output stream parameter
     outputsArray[focus] = &outS;
-    delete deletePtr;
+
+    // Launch a new thread to delete the output stream. This is 
+    // necessary because some output streams wait for a while
+    // and are inactive to conserve system resources, meaning
+    // it could potentially take several seconds before they 
+    // wake up to call their destructor, making the 
+    // system needlessly unresponsive.
+    waitingDelete++;
+    endStreamThread.push_back(new std::thread(
+        &TranslationStreamList::handleOutstreamEnd, this));
+    endStreamThread[endStreamThread.size() - 1]->detach();
+}
+void TranslationStreamList::clearDeleteThreads()
+{
+    while (endStreamThread.size() > 0)
+    {
+        delete endStreamThread[endStreamThread.size() - 1];
+        endStreamThread.pop_back();
+    }
 }
 TranslationStreamList::~TranslationStreamList()
 {
@@ -192,6 +231,14 @@ TranslationStreamList::~TranslationStreamList()
         delete outputsArray[loopIndex];
         delete inputsArray[loopIndex];
     }
+    // Ensure no prior delete is cut off of
+    // being processed.
+    while (waitingDelete > 0)
+    {
+        // Wait for previous outstream delete
+    }
+    // Clear out stream deletion thread queue
+    clearDeleteThreads();
 }
 
 
@@ -542,7 +589,7 @@ LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
         fixedSetRadio = ToggleButton(m, uMsg, wParam, lParam);
         fixedSetRadio.setCoords(0.65, 0.5, 0.045);
         fixedSetLabel = TextBox(m, uMsg, wParam, lParam);
-        fixedSetLabel.setCoords(0.645, 0.47, 0.85, 0.53);
+        fixedSetLabel.setCoords(0.625, 0.47, 0.85, 0.53);
         fixedSetLabel.setText("Fixed Coordinates");
         fixedTLXLabel = TextBox(m, uMsg, wParam, lParam);
         fixedTLXLabel.setCoords(0.64, 0.55, 0.72, 0.60);
@@ -613,16 +660,16 @@ LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
             // Fail drawing totally, exit.
             return DefWindowProc(m, uMsg, wParam, lParam);;  
         }
-        static ID2D1HwndRenderTarget* pRenderTarget = NULL;
+        static ID2D1HwndRenderTarget* pRenderTarget = nullptr;
         static ID2D1HwndRenderTarget* screenRenderTarget = NULL;
-        static ID2D1SolidColorBrush* pBrush = NULL;
-        static ID2D1SolidColorBrush* screenBrush = NULL;
+        ID2D1SolidColorBrush* pBrush = NULL;
+        ID2D1SolidColorBrush* screenBrush = NULL;
         static const D2D1_COLOR_F color = D2D1::ColorF(0.9, 0.9, 0.95);
         static const D2D1_COLOR_F screenColor = D2D1::ColorF(0.0, 0.0, 0.0);
 
         // Get the render target running as well as the background brush
         HRESULT hr = S_OK;
-        if (pRenderTarget == NULL)
+        if (pRenderTarget == nullptr || screenRenderTarget == nullptr)
         {
             RECT rc;
             GetClientRect(m, &rc);
@@ -641,15 +688,11 @@ LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
                 D2D1::RenderTargetProperties(),
                 D2D1::HwndRenderTargetProperties(screenWindow, screenSize),
                 &screenRenderTarget);
-            
-
-            if (SUCCEEDED(hr))
-            {
-                // Get background brush.
-                hr = pRenderTarget->CreateSolidColorBrush(color, &pBrush);
-                hr = pRenderTarget->CreateSolidColorBrush(screenColor, &screenBrush);
-            }
          }
+
+        // Get background brush.
+        hr = pRenderTarget->CreateSolidColorBrush(color, &pBrush);
+        hr = pRenderTarget->CreateSolidColorBrush(screenColor, &screenBrush);
 
         if (SUCCEEDED(hr))
         {
@@ -746,21 +789,21 @@ LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
                 {
                     // Pass new transparent output object to be taken by list.
                     Integration_Output* passTransparent = new 
-                        Integration_Output(m, uMsg, wParam, lParam);
+                        Integration_Output(screenWindow, uMsg, wParam, lParam);
                     translationList->setOutStream(*passTransparent);
                 }
                 else if (tempInt == 1)
                 {
                     // Pass new solid output object to be taken by list.
                     Solid_Output* passSolid = new Solid_Output(
-                        m, uMsg, wParam, lParam);
+                        screenWindow, uMsg, wParam, lParam);
                     translationList->setOutStream(*passSolid);
                 }
                 else if (tempInt == 2)
                 {
                     // Pass new image output object to be taken by list.
                     Image_Output* passImage = new Image_Output(
-                        m, uMsg, wParam, lParam);
+                        screenWindow, uMsg, wParam, lParam);
                     translationList->setOutStream(*passImage);
                 }
                 else if (tempInt == 3)
@@ -768,7 +811,7 @@ LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
                     // Pass new horizontal stretch output 
                     // object to be taken by list.
                     Horizontal_Output* passHorizontal = new Horizontal_Output(
-                        m, uMsg, wParam, lParam);
+                        screenWindow, uMsg, wParam, lParam);
                     translationList->setOutStream(*passHorizontal);
                 }
                 else
@@ -776,7 +819,7 @@ LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
                     // Pass new vertical stretch output 
                     // object to be taken by list.
                     Vertical_Output* passVertical = new Vertical_Output(
-                        m, uMsg, wParam, lParam);
+                        screenWindow, uMsg, wParam, lParam);
                     translationList->setOutStream(*passVertical);
                 }
             }
@@ -847,12 +890,7 @@ LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
                 if (*&pRenderTarget)
                 {
                     (*&pRenderTarget)->Release();
-                    *&pRenderTarget = NULL;
-                }
-                if (*&pBrush)
-                {
-                    (*&pBrush)->Release();
-                    *&pBrush = NULL;
+                    *&pRenderTarget = nullptr;
                 }
             }
             EndPaint(m, &ps);
@@ -868,25 +906,42 @@ LRESULT MTILUIProgram::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
             // Make sure to resize objects
             if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
             {
-                if (*&pRenderTarget)
+                if (*&screenRenderTarget)
                 {
-                    (*&pRenderTarget)->Release();
-                    *&pRenderTarget = NULL;
-                }
-                if (*&pBrush)
-                {
-                    (*&pBrush)->Release();
-                    *&pBrush = NULL;
+                    (*&screenRenderTarget)->Release();
+                    *&screenRenderTarget = nullptr;
                 }
             }
+            else
+            {
+                // End screen overlay drawing
+                hr = screenRenderTarget->EndDraw();
+                EndPaint(screenWindow, &screenPaintStruct);
 
-            // End screen overlay drawing
-            hr = screenRenderTarget->EndDraw();
-            EndPaint(screenWindow, &screenPaintStruct);
+            }
+
             
             //
             // All drawing should end here
             //
+
+            (*&pBrush)->Release();
+            (*&screenBrush)->Release();
+
+            /*
+            // Occasionally clear render target to prevent
+            // potential extreme memory leaks
+            cycleCounter++;
+            if(cycleCounter == 500)
+            {
+                cycleCounter = 0;
+                (*&pRenderTarget)->Release();
+                (*&screenRenderTarget)->Release();
+                *&pRenderTarget = nullptr;
+                *&screenRenderTarget = nullptr;
+                std::cout << "Cleared" << std::endl;
+            }
+            */
 
             // Reset status of controls and check again
             keyPressed = 'a'; // Arbitrary noninput key

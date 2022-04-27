@@ -70,6 +70,12 @@ public:
     void setOutStream(Integration_Output& outS);
     ~TranslationStreamList();
 private:
+    void handleOutstreamEnd();
+    void clearDeleteThreads();
+    Integration_Output* deleteOutStream;
+    int waitingDelete = 0;
+    std::vector <std::thread *> endStreamThread;
+
     Integration_Input* inputsArray[8];
     Integration_Output* outputsArray[8];
     char hDtKeys[8];
@@ -124,7 +130,9 @@ class MTILUIProgram
         static LRESULT CALLBACK WindowProcChild(HWND hWnd, UINT uMsg,
             WPARAM wParam, LPARAM lParam);
     private: 
+
         bool running = true;
+        int cycleCounter = 0;
         // Determines which stream is selected in the GUI
         int focus = 0;
 
@@ -144,6 +152,7 @@ class MTILUIProgram
         // Uses a 0 - 1 scale
         float overlayX = 0;
         float overlayY = 0;
+
 
         
         void handleInOut();

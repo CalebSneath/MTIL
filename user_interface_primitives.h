@@ -183,6 +183,7 @@ class TextBox : public RectangleShape
             HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget);
         void setText(std::string inText);
     protected:
+        bool minScaling = false;
         std::string text = "";
 };
 

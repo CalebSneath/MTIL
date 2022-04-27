@@ -102,8 +102,7 @@ void Circle::cycleCircle(float rValue, float gValue, float bValue, HRESULT& hr,
     ID2D1HwndRenderTarget*& pRenderTarget)
 {
     D2D1_ELLIPSE ellipse;
-
-    static ID2D1SolidColorBrush* pBrush = NULL;
+    ID2D1SolidColorBrush* pBrush = NULL;
     hr = S_OK;
     const D2D1_COLOR_F color = D2D1::ColorF(rValue, gValue, bValue);
     hr = pRenderTarget->CreateSolidColorBrush(color, &pBrush);
@@ -133,6 +132,7 @@ void Circle::cycleCircle(float rValue, float gValue, float bValue, HRESULT& hr,
     {
         pRenderTarget->FillEllipse(ellipse, pBrush);
     }
+    (*&pBrush)->Release();
 }
 
 
@@ -171,7 +171,7 @@ void RectangleShape::cycleRectangle(float rValue, float gValue, float bValue,
     HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget)
 {
     static D2D1_RECT_F thisRect;
-    static ID2D1SolidColorBrush* pBrush = nullptr;
+    ID2D1SolidColorBrush* pBrush = nullptr;
 
     // Early exit if invalid coordinates
     if (topX == -1)
@@ -196,6 +196,11 @@ void RectangleShape::cycleRectangle(float rValue, float gValue, float bValue,
     {
         pRenderTarget->FillRectangle(thisRect, pBrush);
     }
+    else if (FAILED(hr))
+    {
+        pRenderTarget->Release();
+    }
+    (*&pBrush)->Release();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -219,7 +224,7 @@ void RectangularBorder::cycleRectangle(float rValue, float gValue, float bValue,
     HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget)
 {
     static D2D1_RECT_F thisRect;
-    static ID2D1SolidColorBrush* pBrush = nullptr;
+    ID2D1SolidColorBrush* pBrush = nullptr;
 
     hr = S_OK;
     D2D1_SIZE_F size = pRenderTarget->GetSize();
@@ -237,6 +242,7 @@ void RectangularBorder::cycleRectangle(float rValue, float gValue, float bValue,
     {
         pRenderTarget->DrawRectangle(thisRect, pBrush);
     }
+    (*&pBrush)->Release();
 }
 
 // ToggleButton
@@ -346,7 +352,7 @@ void TextBox::cycleText(float rValue, float gValue, float bValue,
     static ID2D1Factory* pD2DFactory = nullptr;
     static IDWriteFactory* pDWriteFactory = nullptr;
     static const WCHAR msc_fontName[] = L"Verdana";
-    static ID2D1SolidColorBrush* textBoxBrush = nullptr;
+    ID2D1SolidColorBrush* textBoxBrush = nullptr;
     static IDWriteTextFormat* textBoxTextFormat = nullptr;
 
     // Early exit if invalid coordinates
@@ -390,9 +396,23 @@ void TextBox::cycleText(float rValue, float gValue, float bValue,
     // the 0.75 * just to add some wiggle room. Also, ensure it
     // is at least a minimum so it doesn't break things / get
     // broken by dividing by zero.
-    const FLOAT msc_fontSize = max((0.75 * log2(digitalSquareInch *
-        (adjustedBottomY - adjustedTopY) * (adjustedBottomX - adjustedTopX) *
-        fontPoint / (arraySize))), 8);
+    FLOAT msc_fontSize;
+    if (minScaling == true)
+    {
+        msc_fontSize = max((0.75 * log2(digitalSquareInch *
+            (adjustedBottomY - adjustedTopY) *
+            (adjustedBottomX - adjustedTopX) *
+            fontPoint / (arraySize))), 12);
+    }
+    else
+    {
+        msc_fontSize = max((0.6 * log2(digitalSquareInch *
+            (adjustedBottomY - adjustedTopY) *
+            (adjustedBottomX - adjustedTopX) *
+            fontPoint / (arraySize))), 1);
+    }
+
+
 
     // Create factories on first object function call.
     // For details see:
@@ -420,10 +440,22 @@ void TextBox::cycleText(float rValue, float gValue, float bValue,
             &textBoxTextFormat);
 
 
-        textBoxTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-        textBoxTextFormat->SetParagraphAlignment(
-            DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
     }
+    // Create a DirectWrite text format object.
+    pDWriteFactory->CreateTextFormat(
+        msc_fontName,
+        NULL,
+        DWRITE_FONT_WEIGHT_REGULAR,
+        DWRITE_FONT_STYLE_NORMAL,
+        DWRITE_FONT_STRETCH_NORMAL,
+        msc_fontSize,
+        L"en-us", //locale
+        &textBoxTextFormat);
+
+    textBoxTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+    textBoxTextFormat->SetParagraphAlignment(
+        DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+
 
     if (!pRenderTarget)
     {
@@ -461,13 +493,9 @@ void TextBox::cycleText(float rValue, float gValue, float bValue,
             (pRenderTarget)->Release();
             pRenderTarget = NULL;
         }
-
-        if (textBoxBrush)
-        {
-            (textBoxBrush)->Release();
-            textBoxBrush = NULL;
-        }
     }
+    (*&textBoxBrush)->Release();
+    (*&textBoxTextFormat)->Release();
 }
 
 // TextEnterInt

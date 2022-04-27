@@ -15,8 +15,10 @@
 #pragma once
 
 #include <string>
+#include <thread>
 #include <Windows.h>
 #include <d2d1.h>
+#include <vector>
 #include "user_interface_primitives.h"
 
 //////////////////////////////////////////////////////////////////////////////
@@ -46,7 +48,9 @@ class Integration_Output: public TextBox
             LPARAM inLongParam);
         virtual void cycleText(std::string inText,
             HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget);
+        virtual ~Integration_Output(){}
     protected:
+        bool minScaling = true;
         int xOffset = 0;
         int yOffset = 0;
 };
@@ -67,7 +71,23 @@ class Horizontal_Output: public Integration_Output
             LPARAM inLongParam);
         void cycleText(std::string inText,
             HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget);
+        ~Horizontal_Output();
+    protected:
+        float waitScale = 5000;
+        int pixelScale = 1;
 
+        std::thread refreshPollThread;
+        ID2D1HwndRenderTarget* heldRenderTarget;
+        void handlePixelPolling();
+        std::vector< D2D1_COLOR_F> pixelColorList;
+        bool drawingDone = true;
+        bool pollingDone = false;
+        bool threadDone = false;
+        bool refreshThreadCalled = false;
+        float adjustedTopX; // Border
+        float adjustedTopY; // Border
+        float adjustedBottomX;
+        float adjustedBottomY;
 };
 
 // Class: Horizontal_Output
@@ -82,6 +102,24 @@ class Vertical_Output : public Integration_Output
             LPARAM inLongParam);
         void cycleText(std::string inText,
             HRESULT& hr, ID2D1HwndRenderTarget*& pRenderTarget);
+        ~Vertical_Output();
+    protected:
+        float waitScale = 1;
+        int pixelScale = 1;
+
+        std::thread refreshPollThread;
+        ID2D1HwndRenderTarget* heldRenderTarget;
+        void handlePixelPolling();
+        void endThreadHandler();
+        std::vector<D2D1_COLOR_F> pixelColorList;
+        bool drawingDone = true;
+        bool pollingDone = false;
+        bool threadDone = false;
+        bool refreshThreadCalled = false;
+        float adjustedTopX; // Border
+        float adjustedTopY; // Border
+        float adjustedBottomX;
+        float adjustedBottomY;
 };
 
 // Class: Image_Output

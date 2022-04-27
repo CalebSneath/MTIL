@@ -29,23 +29,33 @@ Clipboard_Input::Clipboard_Input()
     getText();
 }
 void Clipboard_Input::updateText() {
-    OpenClipboard(nullptr);
-    // Make sure the clipboard actually has text so we don't pass in any
-    // noncharacter data to things expecting strings or chars. Otherwise,
-    // just keep the old text.
-    if (IsClipboardFormatAvailable(CF_TEXT) || 
-        IsClipboardFormatAvailable(CF_UNICODETEXT))
+    // Guard against unexpected input errors
+    try
     {
-        HANDLE hData = GetClipboardData(CF_TEXT);
+        std::string holdText = "";
 
-        char* pszText = static_cast<char*>(GlobalLock(hData));
-        std::string text(pszText);
+        OpenClipboard(nullptr);
+        // Make sure the clipboard actually has text so we don't pass in any
+        // noncharacter data to things expecting strings or chars. Otherwise,
+        // just keep the old text.
+        if (IsClipboardFormatAvailable(CF_TEXT))
+        {
+            HANDLE hData = GetClipboardData(CF_TEXT);
 
-        GlobalUnlock(hData);
+            char* pszText = static_cast<char*>(GlobalLock(hData));
+            std::string text(pszText);
 
-        newText = text;
+            GlobalUnlock(hData);
+
+            holdText = text;
+        }
+        CloseClipboard();
+        newText = holdText;
     }
-    CloseClipboard();
+    catch (...)
+    {
+        newText = inputText;
+    }
 }
 std::string Clipboard_Input::getText() 
 {
@@ -63,6 +73,45 @@ std::string File_Input::names[8] = { "MTILFile1.in", "MTILFile2.in",
     "MTILFile7.in", "MTILFile8.in" };
 File_Input::File_Input() 
 {
+    std::ifstream confFile;
+    confFile.open("Input Sources.conf");
+
+    int loopIndex = 0;
+    // Guard against crashes
+    if (confFile.is_open())
+    {
+        // Iterate through file
+        // and load names into array
+        while (confFile && loopIndex < 9)
+        {
+            std::string holdInput;
+            confFile >> holdInput >> holdInput >> names[loopIndex];
+
+            // Iterate loop control
+            loopIndex++;
+        }
+
+        // Close file
+        confFile.close();
+    }
+
+    // ConfFile Corrupted, try making a new one
+    if (loopIndex != 9)
+    {
+        std::ofstream newConfFile;
+        newConfFile.open("Input Sources.conf");
+
+        // Iterate through each row
+        for (int newLoopIndex = 0; newLoopIndex < 9; newLoopIndex++)
+        {
+            newConfFile << "Input " << newLoopIndex + 1 <<
+                ": MTILFile" << newLoopIndex + 1 << ".in" << std::endl;
+        }
+
+        // Close file
+        newConfFile.close();
+    }
+
     // Iterate through the input files
     // Grab the first and mark it as
     // in use to all other input streams.
