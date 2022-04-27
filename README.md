@@ -35,7 +35,7 @@ The last point above may seems like a fairly large disadvantage for a program, b
 |   13   | [Input Sources.conf](https://github.com/CalebSneath/MTIL/Input_Sources.conf)         | Configuration file for configuring input source file name.   |
 |   14   | [Output Offset.conf](https://github.com/CalebSneath/MTIL/Output_Offset.conf)         | Configuration file to allow user to finetune small details about how the program looks at the nearby screen environment for performance or accuracy. |
 |   15   | [Example.png](https://github.com/CalebSneath/MTIL/Example.png)         | A screenshot showing off the program usage. |
-|   16   | [UI Final.png](https://github.com/CalebSneath/MTIL/UI_Final.png)         | A screenshot showing off the configuration GUI. |
+|   16   | [UI Finished.png](https://github.com/CalebSneath/MTIL/UI_Finished.png)         | A screenshot showing off the configuration GUI. |
 |   17   | [Everything Else]     | Various preset files to be used as examples for program use.  |
 
 
@@ -54,7 +54,7 @@ Compilation is incredibly simple. Just do one of the following:
 #### Method 2: 
 - Clone this repository using Visual Studios if you know how. Proceed to the second to last step of Method 1.
 
-<img src="UI Final.png" width="800">
+<img src="UI Finished.png" width="800">
 
 ### Usage instructions
 
